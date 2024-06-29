@@ -8,7 +8,7 @@ struct csv_t {
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
-  char **val;
+  const char **val;
   int *len;
   int vtop;
   int vmax;
@@ -31,7 +31,7 @@ static int expand_val(csv_t *csv) {
   max = max + 1;
 #endif
 
-  char **newval = realloc(csv->val, max * sizeof(*newval));
+  const char **newval = realloc(csv->val, max * sizeof(*newval));
   if (!newval) {
     return -1;
   }
@@ -72,12 +72,16 @@ static int onerow(csv_t *csv, csv_status_t *status) {
   const char esc = csv->esc;
   const char qte = csv->qte;
   const char delim = csv->delim;
-  status->pos = 0;
 
   // p points to start of value; pp points to the current special char
-  char *p = scan->p;
-  char *pp = 0;
+  const char *p = scan->p;
+  const char *pp = 0;
   char ch; // char at *pp
+
+  csv->vtop = 0;
+  status->rowno++;
+  status->rowpos = p - scan->orig;
+  status->fldno = csv->vtop + 1;
 
 STARTVAL:
   // reserve space for new val
@@ -141,8 +145,6 @@ QUOTED:
   }
 
   if (ch == '\n') {
-    status->line++;
-    status->line_pos = pp + 1 - scan->orig;
     goto QUOTED;
   }
   if (ch == delim) {
@@ -157,10 +159,10 @@ ENDVAL:
   csv->val[csv->vtop] = p;
   csv->len[csv->vtop] = pp - p;
   csv->vtop++;
+  status->fldno = csv->vtop + 1;
 
   // start next val
   p = pp + 1;
-  status->pos = p - scan->orig;
   goto STARTVAL;
 
 ENDLINE:
@@ -168,20 +170,14 @@ ENDLINE:
   csv->val[csv->vtop] = p;
   csv->len[csv->vtop] = pp - p;
   csv->vtop++;
-
-  status->line++;
-  status->line_pos = pp + 1 - scan->orig;
-  status->row++;
-  status->row_pos = pp + 1 - scan->orig;
+  status->fldno = csv->vtop + 1;
   return 0;
 }
 
-int csv_feed(csv_t *csv, char *buf, int buflen, csv_status_t *status) {
-  status->line = 1;
-  status->line_pos = 0;
-  status->row = 1;
-  status->row_pos = 0;
-  status->pos = 0;
+int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
+  status->rowno = 1;
+  status->rowpos = 0;
+  status->fldno = 1;
   status->errmsg[0] = 0;
 
   scan_t *scan = &csv->scan;
@@ -189,7 +185,6 @@ int csv_feed(csv_t *csv, char *buf, int buflen, csv_status_t *status) {
 
   while (scan->p < scan->q) {
     if (onerow(csv, status)) {
-      status->pos = scan->prev_p - scan->orig;
       return -1;
     }
   }

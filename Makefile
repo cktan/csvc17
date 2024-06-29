@@ -2,7 +2,7 @@
 
 prefix ?= /usr/local
 
-DIRS = src 
+DIRS = src unit
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)

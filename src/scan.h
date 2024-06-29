@@ -7,15 +7,41 @@ typedef struct scan_t scan_t;
 struct scan_t {
   uint32_t flag;
   // orig <= base <= p <= q.
-  char *orig;   // scan started here
-  char *base;   // the current 32-byte
-  char *prev_p; // ptr to previous token
-  char *p;      // ptr to current token
-  char *q;      // scan ends here
+  const char *orig;   // scan started here
+  const char *base;   // the current 32-byte
+  const char *prev_p; // ptr to previous token
+  const char *p;      // ptr to current token
+  const char *q;      // scan ends here
   __m256i qte, esc, delim, endl;
   char tmpbuf[32]; // copy when (q-base) < 32b
   int esc_is_qte;
 };
+
+static int __scan_calcflag(scan_t *scan) {
+  const char *base = scan->base;
+  int len = scan->q - base;
+  if (len < 32) {
+    if (len <= 0) {
+      return -1;
+    }
+    memset(scan->tmpbuf, 0, sizeof(scan->tmpbuf));
+    memcpy(scan->tmpbuf, base, len);
+    base = scan->tmpbuf;
+  }
+
+  __m256i src = _mm256_loadu_si256((__m256i *)base);
+  if (scan->esc_is_qte) {
+    scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
+                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
+                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
+  } else {
+    scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
+                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->esc)) |
+                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
+                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
+  }
+  return 0;
+}
 
 static inline void scan_init(scan_t *scan, char qte, char esc, char delim) {
   memset(scan, 0, sizeof(*scan));
@@ -26,46 +52,23 @@ static inline void scan_init(scan_t *scan, char qte, char esc, char delim) {
   scan->esc_is_qte = (esc == qte);
 }
 
-static inline void scan_reset(scan_t *scan, char *p, int len) {
-  scan->orig = p;
-  scan->base = p;
-  scan->p = p;
-  scan->q = p + len;
-  scan->flag = 0;
+static inline void scan_reset(scan_t *scan, const char *buf, int buflen) {
+  scan->orig = buf;
+  scan->base = buf;
+  scan->p = buf;
+  scan->q = buf + buflen;
+  __scan_calcflag(scan);
 }
 
 static void __scan_forward(scan_t *scan) {
   while (!scan->flag) {
-    char *base = scan->base;
-    int len = scan->q - base;
-    if (len < 32) {
-      if (len <= 0) {
-        return;
-      }
-      memset(scan->tmpbuf, 0, sizeof(scan->tmpbuf));
-      memcpy(scan->tmpbuf, scan->p, len);
-      base = scan->tmpbuf;
-    }
-
-    __m256i src = _mm256_loadu_si256((__m256i *)base);
-    if (scan->esc_is_qte) {
-      scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
-                   _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
-                   _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
-    } else {
-      scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
-                   _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->esc)) |
-                   _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
-                   _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
-    }
-
-    if (!scan->flag) {
-      scan->base += 32;
-    }
+    scan->base += 32;
+    if (__scan_calcflag(scan))
+      break;
   }
 }
 
-static inline char *scan_peek(scan_t *scan) {
+static inline const char *scan_peek(scan_t *scan) {
   if (!scan->flag) {
     __scan_forward(scan);
   }
@@ -75,7 +78,7 @@ static inline char *scan_peek(scan_t *scan) {
   return off >= 0 ? scan->base + off : 0;
 }
 
-static inline char *scan_pop(scan_t *scan) {
+static inline const char *scan_pop(scan_t *scan) {
   if (!scan->flag) {
     __scan_forward(scan);
   }

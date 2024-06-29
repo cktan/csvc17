@@ -18,6 +18,8 @@ endif
 
 LDLIBS=
 
+CXXFLAGS := $(filter-out -std=c17, $(CFLAGS)) -std=c++17
+
 
 %: %.cpp   # delete implicit rule
 %: %.cpp   # add implicit rule
