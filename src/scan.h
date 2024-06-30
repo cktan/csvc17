@@ -5,15 +5,19 @@
 
 typedef struct scan_t scan_t;
 struct scan_t {
+  // for alignment
+  __m256i qte, esc, delim, endl;
+  char tmpbuf[32]; // copy when (q-base) < 32b
+
+  // bitmap for interesting bits offset from base
   uint32_t flag;
+  
   // orig <= base <= p <= q.
   const char *orig;   // scan started here
   const char *base;   // the current 32-byte
   const char *prev_p; // ptr to previous token
   const char *p;      // ptr to current token
   const char *q;      // scan ends here
-  __m256i qte, esc, delim, endl;
-  char tmpbuf[32]; // copy when (q-base) < 32b
   int esc_is_qte;
 };
 

@@ -11,7 +11,7 @@ clean:
 	rm -f *.o *.a *.d $(EXECS)
 
 format:
-	clang-format -i *.[ch] *.[ch]pp
+	clang-format -i *.[ch]pp
 
 include $(TOPDIR)/common.mk
 

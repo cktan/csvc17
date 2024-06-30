@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 struct csv_t {
+  scan_t scan;  // place here for alignment
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
@@ -12,7 +13,6 @@ struct csv_t {
   int *len;
   int vtop;
   int vmax;
-  scan_t scan;
 };
 
 static int perr(csv_status_t *status, const char *fmt, ...) {
@@ -63,7 +63,7 @@ static int expand_val(csv_t *csv) {
    |               v       newline
    +----------- [ENDVAL]    |
    |                        |
-   +------ [ENDLINE] -------+
+   +------- [ENDROW] -------+
 
 */
 
@@ -103,7 +103,7 @@ UNQUOTED:
     goto ENDVAL;
   }
   if (ch == '\n') {
-    goto ENDLINE;
+    goto ENDROW;
   }
   if (ch == esc) {
     goto UNQUOTED;
@@ -144,10 +144,8 @@ QUOTED:
     goto UNQUOTED;
   }
 
-  if (ch == '\n') {
-    goto QUOTED;
-  }
-  if (ch == delim) {
+  // still in quote
+  if (ch == '\n' || ch == delim) {
     goto QUOTED;
   }
 
@@ -165,37 +163,34 @@ ENDVAL:
   p = pp + 1;
   goto STARTVAL;
 
-ENDLINE:
+ENDROW:
   // record the val
   csv->val[csv->vtop] = p;
   csv->len[csv->vtop] = pp - p;
   csv->vtop++;
   status->fldno = csv->vtop + 1;
+  scan->p++;
   return 0;
 }
 
 int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
-  status->rowno = 1;
+  status->rowno = 0;
   status->rowpos = 0;
-  status->fldno = 1;
+  status->fldno = 0;
   status->errmsg[0] = 0;
 
-  scan_t *scan = &csv->scan;
   scan_reset(&csv->scan, buf, buflen);
 
-  while (scan->p < scan->q) {
-    if (onerow(csv, status)) {
-      return -1;
-    }
-  }
+  while (0 == onerow(csv, status));
 
-  return 0;
+  return status->rowno > 1 ? status->rowpos : -1;
 }
 
 csv_t *csv_open(void *context, int qte, int esc, int delim,
                 csv_notify_t *notifyfn) {
-  csv_t *csv = calloc(1, sizeof(*csv));
-  if (!csv) {
+  csv_t *csv;
+
+  if (posix_memalign((void**) &csv, 32, sizeof(*csv))) {
     return 0;
   }
 

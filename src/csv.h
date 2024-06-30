@@ -1,6 +1,6 @@
 #pragma once
 
-typedef int csv_notify_t(void *context, int nfield, char **val, int *len);
+typedef int csv_notify_t(void *context, int nfield, const char **val, int *len);
 
 typedef struct csv_status_t csv_status_t;
 struct csv_status_t {
@@ -18,7 +18,7 @@ void csv_close(csv_t *csv);
 
 /**
  *  Scan buf[] and call notify() for each row.
- *  Returns 0 on success, -1 otherwise.
+ *  Returns #bytes processed in buf[], or -1 on error.
  *
  *  Note that each row, INCLUDING THE LAST ROW, must end with \n.
  */

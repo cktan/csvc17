@@ -11,7 +11,7 @@ extern "C" {
 
 using namespace std;
 
-TEST_CASE("scan1: test scan operations") {
+TEST_CASE("01: scan") {
 
   scan_t scan;
   scan_init(&scan, '"', '\\', '|');
