@@ -16,7 +16,7 @@ TEST_CASE("02: csv") {
 
   SUBCASE("open and shut") {
     csv_t *csv = csv_open((void *)1, '"', '"', '|',
-                          [](void *, int, const char **, int *) { return 0; });
+                          [](void *, int, const csv_value_t *) { return 0; });
     CHECK(csv);
     csv_close(csv);
   }
@@ -24,7 +24,7 @@ TEST_CASE("02: csv") {
     const char *raw = "abc\n";
     const int len = strlen(raw);
     csv_t *csv = csv_open((void *)1, '"', '"', '|',
-                          [](void *, int, const char **, int *) { return 0; });
+                          [](void *, int, const csv_value_t *) { return 0; });
     CHECK(csv);
     int n = csv_feed(csv, raw, len, &status);
     CHECK(n == len);
@@ -34,7 +34,7 @@ TEST_CASE("02: csv") {
     const char *raw = "abc|def|ghi\njkl|mno|pqr\n";
     const int len = strlen(raw);
     csv_t *csv = csv_open((void *)1, '"', '"', '|',
-                          [](void *, int, const char **, int *) { return 0; });
+                          [](void *, int, const csv_value_t *) { return 0; });
     CHECK(csv);
     int n = csv_feed(csv, raw, len, &status);
     CHECK(n == len);
@@ -46,7 +46,7 @@ TEST_CASE("02: csv") {
     const char *raw = "abc|def|ghi\njkl|mno|pqr\nxxx";
     const int len = strlen(raw);
     csv_t *csv = csv_open((void *)1, '"', '"', '|',
-                          [](void *, int, const char **, int *) { return 0; });
+                          [](void *, int, const csv_value_t *) { return 0; });
     CHECK(csv);
 
     int n = csv_feed(csv, raw, len, &status);

@@ -1,6 +1,15 @@
 #pragma once
 
-typedef int csv_notify_t(void *context, int nfield, const char **val, int *len);
+typedef struct csv_value_t csv_value_t;
+struct csv_value_t {
+  int fldno;       // field number starting at 1
+  int fldpos;      // position of the field relative to input
+  const char *ptr; // points into input
+  int len;
+  int quoted; // flag if quoted
+};
+
+typedef int csv_notify_t(void *context, int nvalue, const csv_value_t value[]);
 
 typedef struct csv_status_t csv_status_t;
 struct csv_status_t {

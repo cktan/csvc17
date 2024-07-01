@@ -9,8 +9,8 @@ struct csv_t {
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
-  const char **val;
-  int *len;
+
+  csv_value_t *value;
   int vtop;
   int vmax;
 };
@@ -23,8 +23,8 @@ static int perr(csv_status_t *status, const char *fmt, ...) {
   return -1;
 }
 
-// grow csv->val[]
-static int expand_val(csv_t *csv) {
+// grow csv->value[]
+static int expand_value(csv_t *csv) {
   int max = csv->vmax;
 #ifndef NDEBUG
   max = max * 1.5 + 10;
@@ -32,33 +32,25 @@ static int expand_val(csv_t *csv) {
   max = max + 1;
 #endif
 
-  const char **newval = realloc(csv->val, max * sizeof(*newval));
+  csv_value_t *newval = realloc(csv->value, max * sizeof(*newval));
   if (!newval) {
     return -1;
   }
-  csv->val = newval;
-
-  int *newlen = realloc(csv->len, max * sizeof(*newlen));
-  if (!newlen) {
-    return -1;
-  }
-  csv->len = newlen;
-
+  csv->value = newval;
   csv->vmax = max;
   assert(csv->vtop + 1 < csv->vmax);
   return 0;
 }
 
-// make sure csv->val[] can accomodate one value
-static inline int ensure_val(csv_t* csv, csv_status_t* status) {
+// make sure csv->value[] can accomodate at least one value
+static inline int ensure_value(csv_t *csv, csv_status_t *status) {
   if (csv->vtop + 1 >= csv->vmax) {
-    if (expand_val(csv)) {
+    if (expand_value(csv)) {
       return perr(status, "out of memory");
     }
   }
   return 0;
 }
-
 
 /*
   e: escape
@@ -96,12 +88,20 @@ static int onerow(csv_t *csv, csv_status_t *status) {
   status->fldno = 0;
   status->fldpos = 0;
 
+  csv_value_t *value;
+
 STARTVAL:
-  if (ensure_val(csv, status)) {
+  if (ensure_value(csv, status)) {
     return -1;
   }
   status->fldno++;
   status->fldpos = p - scan->orig;
+  value = &csv->value[csv->vtop++];
+  value->fldno = status->fldno;
+  value->fldpos = status->fldpos;
+  value->ptr = p;
+  value->len = 0;
+  value->quoted = 0;
   goto UNQUOTED;
 
 UNQUOTED:
@@ -109,6 +109,7 @@ UNQUOTED:
   // ch in [0, \n, delim, qte, or esc]
   ch = pp ? *pp : 0;
   if (ch == qte) {
+    value->quoted = 1;
     goto QUOTED;
   }
   if (ch == delim) {
@@ -140,7 +141,7 @@ QUOTED:
       // if qx: just exited quote. continue in UNQUOTED state.
       goto UNQUOTED;
     }
-    
+
     // case when esc != qte
 
     if (ch == qte) {
@@ -169,9 +170,7 @@ QUOTED:
 
 ENDVAL:
   // record the val
-  csv->val[csv->vtop] = p;
-  csv->len[csv->vtop] = pp - p;
-  csv->vtop++;
+  value->len = pp - p;
 
   // start next val
   p = pp + 1;
@@ -180,9 +179,7 @@ ENDVAL:
 
 ENDROW:
   // record the val
-  csv->val[csv->vtop] = p;
-  csv->len[csv->vtop] = pp - p;
-  csv->vtop++;
+  value->len = pp - p;
 
   // eat the newline
   scan->p++;
@@ -198,8 +195,11 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
 
   scan_reset(&csv->scan, buf, buflen);
 
-  while (0 == onerow(csv, status))
-    ;
+  while (0 == onerow(csv, status)) {
+    if (csv->notifyfn(csv->context, csv->vtop, csv->value)) {
+      return perr(status, "notify failed");
+    }
+  }
 
   return status->rowno > 1 ? status->rowpos : -1;
 }
