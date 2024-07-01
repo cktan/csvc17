@@ -11,7 +11,7 @@ struct scan_t {
 
   // bitmap for interesting bits offset from base
   uint32_t flag;
-  
+
   // orig <= base <= p <= q.
   const char *orig;   // scan started here
   const char *base;   // the current 32-byte

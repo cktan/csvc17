@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 struct csv_t {
-  scan_t scan;  // place here for alignment
+  scan_t scan; // place here for alignment
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
@@ -23,6 +23,7 @@ static int perr(csv_status_t *status, const char *fmt, ...) {
   return -1;
 }
 
+// grow csv->val[]
 static int expand_val(csv_t *csv) {
   int max = csv->vmax;
 #ifndef NDEBUG
@@ -47,6 +48,17 @@ static int expand_val(csv_t *csv) {
   assert(csv->vtop + 1 < csv->vmax);
   return 0;
 }
+
+// make sure csv->val[] can accomodate one value
+static inline int ensure_val(csv_t* csv, csv_status_t* status) {
+  if (csv->vtop + 1 >= csv->vmax) {
+    if (expand_val(csv)) {
+      return perr(status, "out of memory");
+    }
+  }
+  return 0;
+}
+
 
 /*
   e: escape
@@ -81,15 +93,15 @@ static int onerow(csv_t *csv, csv_status_t *status) {
   csv->vtop = 0;
   status->rowno++;
   status->rowpos = p - scan->orig;
-  status->fldno = csv->vtop + 1;
+  status->fldno = 0;
+  status->fldpos = 0;
 
 STARTVAL:
-  // reserve space for new val
-  if (csv->vtop + 1 >= csv->vmax) {
-    if (expand_val(csv)) {
-      return perr(status, "out of memory");
-    }
+  if (ensure_val(csv, status)) {
+    return -1;
   }
+  status->fldno++;
+  status->fldpos = p - scan->orig;
   goto UNQUOTED;
 
 UNQUOTED:
@@ -118,49 +130,52 @@ QUOTED:
 
   if (ch == qte || ch == esc) {
     // handle the normal case that esc == qte.
-    if (esc == qte) {
+    if (qte == esc) {
       char ch1 = (pp + 1 == scan_peek(scan) ? pp[1] : 0);
       if (ch1 == qte) {
         // if qq: pop and continue in QUOTED state.
         pp = scan_pop(scan);
         goto QUOTED;
       }
+      // if qx: just exited quote. continue in UNQUOTED state.
       goto UNQUOTED;
     }
+    
     // case when esc != qte
-    if (ch == esc) {
-      char ch1 = (pp + 1 == scan_peek(scan) ? pp[1] : 0);
-      if (ch1 == qte || ch1 == esc) {
-        // if eq or ee, pop and continue in QUOTED state.
-        pp = scan_pop(scan);
-        goto QUOTED;
-      }
-      if (esc != qte) {
-        // ignore esc and continue in QUOTED state.
-        goto QUOTED;
-      }
-    }
-    assert(ch == qte);
-    goto UNQUOTED;
-  }
 
-  // still in quote
-  if (ch == '\n' || ch == delim) {
+    if (ch == qte) {
+      // the quote was not escaped, so we exit QUOTED state.
+      goto UNQUOTED;
+    }
+
+    // ch is esc and esc != qte: always continue in QUOTED state
+    // regardless of eq, ee, or ex.
+    assert(ch == esc);
+    char ch1 = (pp + 1 == scan_peek(scan) ? pp[1] : 0);
+    if (ch1 == qte || ch1 == esc) {
+      // if eq or ee, eat the escaped char.
+      pp = scan_pop(scan);
+    }
     goto QUOTED;
   }
 
-  assert(ch == 0);
-  return perr(status, "unterminated quote");
+  if (!ch) {
+    return perr(status, "unterminated quote");
+  }
+
+  // still in quote
+  assert(ch == '\n' || ch == delim);
+  goto QUOTED;
 
 ENDVAL:
   // record the val
   csv->val[csv->vtop] = p;
   csv->len[csv->vtop] = pp - p;
   csv->vtop++;
-  status->fldno = csv->vtop + 1;
 
   // start next val
   p = pp + 1;
+
   goto STARTVAL;
 
 ENDROW:
@@ -168,7 +183,8 @@ ENDROW:
   csv->val[csv->vtop] = p;
   csv->len[csv->vtop] = pp - p;
   csv->vtop++;
-  status->fldno = csv->vtop + 1;
+
+  // eat the newline
   scan->p++;
   return 0;
 }
@@ -177,11 +193,13 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
   status->rowno = 0;
   status->rowpos = 0;
   status->fldno = 0;
+  status->fldpos = 0;
   status->errmsg[0] = 0;
 
   scan_reset(&csv->scan, buf, buflen);
 
-  while (0 == onerow(csv, status));
+  while (0 == onerow(csv, status))
+    ;
 
   return status->rowno > 1 ? status->rowpos : -1;
 }
@@ -190,7 +208,7 @@ csv_t *csv_open(void *context, int qte, int esc, int delim,
                 csv_notify_t *notifyfn) {
   csv_t *csv;
 
-  if (posix_memalign((void**) &csv, 32, sizeof(*csv))) {
+  if (posix_memalign((void **)&csv, 32, sizeof(*csv))) {
     return 0;
   }
 

@@ -7,6 +7,7 @@ struct csv_status_t {
   int rowno;  // current row number
   int rowpos; // position of current row's first char
   int fldno;  // field number starting at 1
+  int fldpos; // position of current field's first char
   char errmsg[200];
 };
 
