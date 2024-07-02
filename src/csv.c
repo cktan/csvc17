@@ -1,5 +1,6 @@
 #include "csv.h"
 #include "scan.h"
+#include "unquote.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -8,10 +9,10 @@ struct csv_t {
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
-  
-  scan_t* scan;  // used by onerow()
-  scan_t* unq;   // used by csv_unquote()
-  
+
+  scan_t *scan;   // used by onerow()
+  unquote_t *unq; // used by csv_unquote()
+
   csv_value_t *value;
   int vtop;
   int vmax;
@@ -238,7 +239,7 @@ csv_t *csv_open(void *context, int qte, int esc, int delim,
   csv->notifyfn = notifyfn;
 
   scan_init(csv->scan, qte, esc, delim);
-  scan_init(csv->unq,  qte, esc, delim);
+  unquote_init(csv->unq, qte, esc);
 
   return csv;
 }
