@@ -97,8 +97,6 @@ STARTVAL:
   status->fldno++;
   status->fldpos = p - scan->orig;
   value = &csv->value[csv->vtop++];
-  value->fldno = status->fldno;
-  value->fldpos = status->fldpos;
   value->ptr = p;
   value->len = 0;
   value->quoted = 0;
@@ -180,7 +178,9 @@ ENDVAL:
 ENDROW:
   // record the val
   value->len = pp - p;
-  if (value->len && value->ptr[value->len-1] == '\r') {
+
+  // handle \r\n
+  if (value->len && value->ptr[value->len - 1] == '\r') {
     value->len--;
   }
 

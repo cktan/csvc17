@@ -2,8 +2,6 @@
 
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
-  int fldno;       // field number starting at 1
-  int fldpos;      // position of the field relative to input
   const char *ptr; // points into input
   int len;
   int quoted; // flag if quoted
