@@ -1,11 +1,11 @@
 TOPDIR = ..
 HFILES =
 
-EXECS = test
+EXECS = main
 
 all: $(EXECS)
 
-$(EXECS): test.cpp ../src/libcsv.a
+$(EXECS): main.cpp ../src/libcsv.a
 
 clean:
 	rm -f *.o *.a *.d $(EXECS)

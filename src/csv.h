@@ -1,5 +1,7 @@
 #pragma once
 
+typedef struct csv_t csv_t;
+
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
   const char *ptr; // points into input
@@ -7,7 +9,8 @@ struct csv_value_t {
   int quoted; // flag if quoted
 };
 
-typedef int csv_notify_t(void *context, int nvalue, const csv_value_t value[]);
+typedef int csv_notify_t(void *context, int nvalue, const csv_value_t value[],
+                         csv_t *csv);
 
 typedef struct csv_status_t csv_status_t;
 struct csv_status_t {
@@ -20,6 +23,9 @@ struct csv_status_t {
 
 typedef struct csv_t csv_t;
 
+/**
+ *  Open a csv scan. Returns NULL if out-of-memory.
+ */
 csv_t *csv_open(void *context, int qte, int esc, int delim,
                 csv_notify_t *notifyfn);
 void csv_close(csv_t *csv);
@@ -31,3 +37,9 @@ void csv_close(csv_t *csv);
  *  Note that each row, INCLUDING THE LAST ROW, must end with \n.
  */
 int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status);
+
+/**
+ *  Provided for the notify function to treat quoted
+ *  values. Note that buf[] will be unquoted in-place.
+ */
+int csv_unquote(csv_t *csv, char *buf, int buflen);

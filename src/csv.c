@@ -5,11 +5,13 @@
 #include <stdio.h>
 
 struct csv_t {
-  scan_t scan; // place here for alignment
   void *context;
   char qte, esc, delim;
   csv_notify_t *notifyfn;
-
+  
+  scan_t* scan;  // used by onerow()
+  scan_t* unq;   // used by csv_unquote()
+  
   csv_value_t *value;
   int vtop;
   int vmax;
@@ -72,7 +74,7 @@ static inline int ensure_value(csv_t *csv, csv_status_t *status) {
 */
 
 static int onerow(csv_t *csv, csv_status_t *status) {
-  scan_t *const scan = &csv->scan;
+  scan_t *const scan = csv->scan;
   const char esc = csv->esc;
   const char qte = csv->qte;
   const char delim = csv->delim;
@@ -196,10 +198,10 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
   status->fldpos = 0;
   status->errmsg[0] = 0;
 
-  scan_reset(&csv->scan, buf, buflen);
+  scan_reset(csv->scan, buf, buflen);
 
   while (0 == onerow(csv, status)) {
-    if (csv->notifyfn(csv->context, csv->vtop, csv->value)) {
+    if (csv->notifyfn(csv->context, csv->vtop, csv->value, csv)) {
       return perr(status, "notify failed");
     }
   }
@@ -210,9 +212,19 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
 csv_t *csv_open(void *context, int qte, int esc, int delim,
                 csv_notify_t *notifyfn) {
   csv_t *csv;
+  csv = calloc(1, sizeof(*csv));
+  if (!csv) {
+    return NULL;
+  }
 
-  if (posix_memalign((void **)&csv, 32, sizeof(*csv))) {
-    return 0;
+  if (posix_memalign((void **)&csv->scan, 32, sizeof(*csv->scan))) {
+    csv_close(csv);
+    return NULL;
+  }
+
+  if (posix_memalign((void **)&csv->unq, 32, sizeof(*csv->unq))) {
+    csv_close(csv);
+    return NULL;
   }
 
   if (!esc) {
@@ -225,9 +237,18 @@ csv_t *csv_open(void *context, int qte, int esc, int delim,
   csv->delim = delim;
   csv->notifyfn = notifyfn;
 
-  scan_init(&csv->scan, qte, esc, delim);
+  scan_init(csv->scan, qte, esc, delim);
+  scan_init(csv->unq,  qte, esc, delim);
 
   return csv;
 }
 
-void csv_close(csv_t *scan) { free(scan); }
+void csv_close(csv_t *csv) {
+  if (csv) {
+    free(csv->scan);
+    free(csv->unq);
+    free(csv);
+  }
+}
+
+int csv_unquote(csv_t *csv, char *buf, int buflen) {}

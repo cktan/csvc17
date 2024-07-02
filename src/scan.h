@@ -9,16 +9,14 @@ struct scan_t {
   __m256i qte, esc, delim, endl;
   char tmpbuf[32]; // copy when (q-base) < 32b
 
-  // bitmap for interesting bits offset from base
-  uint32_t flag;
-
   // orig <= base <= p <= q.
-  const char *orig;   // scan started here
-  const char *base;   // the current 32-byte
-  const char *prev_p; // ptr to previous token
-  const char *p;      // ptr to current token
-  const char *q;      // scan ends here
-  int esc_is_qte;
+  const char *orig; // scan started here
+  const char *base; // the current 32-byte in orig[]
+  const char *p;    // ptr to current token
+  const char *q;    // scan ends here
+
+  uint32_t flag;  // bmap marks interesting bits offset from base
+  int esc_is_qte; // true if esc == qte
 };
 
 static int __scan_calcflag(scan_t *scan) {
@@ -88,7 +86,6 @@ static inline const char *scan_pop(scan_t *scan) {
   }
   // __builtin_ffs: returns one plus the index of the least significant 1-bit of
   // x, or if x is zero, returns zero.
-  scan->prev_p = scan->p;
   int off = __builtin_ffs(scan->flag) - 1;
   if (off >= 0) {
     scan->flag &= ~(1 << off);
