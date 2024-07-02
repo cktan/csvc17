@@ -180,6 +180,9 @@ ENDVAL:
 ENDROW:
   // record the val
   value->len = pp - p;
+  if (value->len && value->ptr[value->len-1] == '\r') {
+    value->len--;
+  }
 
   // eat the newline
   scan->p++;
