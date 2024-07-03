@@ -150,13 +150,15 @@ QUOTED:
       goto UNQUOTED;
     }
 
-    // ch is esc and esc != qte: always continue in QUOTED state
-    // regardless of eq, ee, or ex.
     assert(ch == esc);
+    // here, ch is esc and we have either eq, ee, or ex.
+    // for eq or ee, escape one char and continue in QUOTED state.
+    // for ex, do nothing and continue in QUOTED state.
     char ch1 = (pp + 1 == scan_peek(scan) ? pp[1] : 0);
     if (ch1 == qte || ch1 == esc) {
-      // if eq or ee, eat the escaped char.
+      // for eq or ee, eat the escaped char.
       pp = scan_pop(scan);
+      goto QUOTED;
     }
     goto QUOTED;
   }
@@ -252,4 +254,107 @@ void csv_close(csv_t *csv) {
   }
 }
 
-int csv_unquote(csv_t *csv, char *buf, int buflen) {}
+static inline int move(char *dest, char *src, int len) {
+  if (dest != src) {
+    memmove(dest, src, len);
+  }
+  return len;
+}
+
+int csv_unquote(csv_t *csv, char *buf, int buflen, char **val, int *vlen) {
+  unquote_t *unq = csv->unq;
+  const char esc = csv->esc;
+  const char qte = csv->qte;
+  char *dest = buf;
+  char *p = buf;
+  char *q = buf + buflen;
+  char *pp;
+  char ch; // char at *pp
+  *val = dest;
+
+  /* fast path for buf is "xxxxx". this will avoid any copying for
+   * the case when there is nothing special inside the quote.
+   */
+  if (buflen >= 2 && buf[0] == '"' && buf[buflen - 1] == '"') {
+    buf++;
+    buflen--;
+    unquote_reset(unq, buf, buflen);
+    p++;
+    dest++;
+    *val = dest;
+    goto QUOTED;
+  }
+
+  unquote_reset(unq, buf, buflen);
+
+UNQUOTED:
+  pp = unquote_pop(unq);
+  ch = pp ? *pp : 0;
+  if (ch == qte) {
+    dest += move(dest, p, pp - p);
+    p = pp + 1;
+    goto QUOTED;
+  }
+  dest += move(dest, p, q - p);
+  p = q;
+  goto DONE;
+
+QUOTED:
+  pp = unquote_pop(unq);
+  ch = pp ? *pp : 0;
+  if (!ch) {
+    return -1; // unterminated quote
+  }
+
+  // copy all before qte or esc
+  dest += move(dest, p, pp - p);
+  p = pp;
+
+  assert(ch == qte || ch == esc);
+
+  if (qte == esc) {
+    assert(ch == qte);
+    char ch1 = (pp + 1 == unquote_peek(unq) ? pp[1] : 0);
+    // ch == qte && ch1 in [0, qte].
+    if (ch1 == qte) {
+      // if qq: pop and continue in QUOTED state.
+      pp = unquote_pop(unq);
+      *dest++ = '"'; // escaped a qte
+      p = pp + 1;
+      goto QUOTED;
+    }
+    assert(ch1 == 0);
+    p++; // move past the end-quote.
+    goto UNQUOTED;
+  }
+
+  // case esc != qte
+  // ch in [qte, esc]
+
+  if (ch == qte) {
+    // the quote was not escaped, so we exit QUOTED state.
+    p++; // move past the end-quote.
+    goto UNQUOTED;
+  }
+
+  // here, ch is esc and we have either eq, ee, or ex.
+  // for eq or ee, escape one char and continue in QUOTED state.
+  // for ex, do nothing and continue in QUOTED state.
+
+  assert(ch == esc);
+  char ch1 = (pp + 1 == unquote_peek(unq) ? pp[1] : 0);
+  if (ch1 == qte || ch1 == esc) {
+    // if eq or ee, eat the escaped char.
+    pp = unquote_pop(unq);
+    *dest++ = ch1;
+    p = pp + 1;
+    goto QUOTED;
+  }
+
+  // nothing was escaped. continue in QUOTED state.
+  goto QUOTED;
+
+DONE:
+  *vlen = dest - *val;
+  return 0;
+}

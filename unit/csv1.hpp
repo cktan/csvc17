@@ -11,7 +11,7 @@ extern "C" {
 
 using namespace std;
 
-TEST_CASE("02: csv") {
+TEST_CASE("csv1") {
   csv_status_t status;
 
   SUBCASE("open and shut") {

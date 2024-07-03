@@ -42,4 +42,4 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status);
  *  Provided for the notify function to treat quoted
  *  values. Note that buf[] will be unquoted in-place.
  */
-int csv_unquote(csv_t *csv, char *buf, int buflen);
+int csv_unquote(csv_t *csv, char *buf, int buflen, char **val, int *vlen);

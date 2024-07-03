@@ -5,3 +5,5 @@
 
 #include "csv1.hpp"
 #include "scan1.hpp"
+#include "unquote1.hpp"
+#include "unquote2.hpp"

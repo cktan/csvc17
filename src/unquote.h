@@ -14,10 +14,10 @@ struct unquote_t {
   char tmpbuf[32]; // copy when (q-base) < 32b
 
   // orig <= base <= p <= q.
-  const char *orig; // scan started here
-  const char *base; // the current 32-byte in orig[]
-  const char *p;    // ptr to current token
-  const char *q;    // scan ends here
+  char *orig; // scan started here
+  char *base; // the current 32-byte in orig[]
+  char *p;    // ptr to current token
+  char *q;    // scan ends here
 
   uint32_t flag;  // bmap marks interesting bits offset from base
   int esc_is_qte; // true if esc == qte
@@ -52,7 +52,7 @@ static inline void unquote_init(unquote_t *unq, char qte, char esc) {
   unq->esc_is_qte = (esc == qte);
 }
 
-static inline void unquote_reset(unquote_t *unq, const char *buf, int buflen) {
+static inline void unquote_reset(unquote_t *unq, char *buf, int buflen) {
   unq->orig = buf;
   unq->base = buf;
   unq->p = buf;
@@ -68,7 +68,7 @@ static void __unquote_forward(unquote_t *unq) {
   }
 }
 
-static inline const char *unquote_peek(unquote_t *unq) {
+static inline char *unquote_peek(unquote_t *unq) {
   if (!unq->flag) {
     __unquote_forward(unq);
   }
@@ -78,7 +78,7 @@ static inline const char *unquote_peek(unquote_t *unq) {
   return off >= 0 ? unq->base + off : 0;
 }
 
-static inline const char *unquote_pop(unquote_t *unq) {
+static inline char *unquote_pop(unquote_t *unq) {
   if (!unq->flag) {
     __unquote_forward(unq);
   }
