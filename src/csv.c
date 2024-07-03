@@ -267,6 +267,7 @@ void csv_close(csv_t *csv) {
   if (csv) {
     free(csv->scan);
     free(csv->unq);
+    free(csv->value);
     free(csv);
   }
 }
@@ -456,7 +457,7 @@ void csv_filescan_close(csv_filescan_t *fs) {
     munmap((void *)fs->data, fs->datalen);
   }
 
-  free(fs->csv);
+  csv_close(fs->csv);
   free(fs->tmp);
   free(fs);
 }
