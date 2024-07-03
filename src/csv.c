@@ -2,8 +2,13 @@
 #include "scan.h"
 #include "unquote.h"
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 struct csv_t {
   void *context;
@@ -194,7 +199,15 @@ ENDROW:
   return 0;
 }
 
-int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
+int64_t csv_feed(csv_t *csv, const char *buf, int64_t buflen,
+                 csv_status_t *status) {
+  if (buflen <= 0) {
+    if (buflen < 0) {
+      return perr(status, "negative buflen");
+    }
+    return 0;
+  }
+
   status->rowno = 0;
   status->rowpos = 0;
   status->fldno = 0;
@@ -209,7 +222,11 @@ int csv_feed(csv_t *csv, const char *buf, int buflen, csv_status_t *status) {
     }
   }
 
-  return status->rowno > 1 ? status->rowpos : -1;
+  if (status->rowno <= 1) {
+    return perr(status, "unterminated row");
+  }
+
+  return status->rowpos;
 }
 
 csv_t *csv_open(void *context, int qte, int esc, int delim,
@@ -356,5 +373,121 @@ QUOTED:
 
 DONE:
   *vlen = dest - *val;
+  return 0;
+}
+
+struct csv_filescan_t {
+  csv_t *csv;
+  int fd;
+  const char *data;
+  int64_t datalen;
+  char *tmp;
+};
+
+csv_filescan_t *csv_filescan_open(const char *path, void *context, int qte,
+                                  int esc, int delim, csv_notify_t *notifyfn,
+                                  csv_status_t *status) {
+
+  memset(status, 0, sizeof(*status));
+
+  csv_filescan_t *fs = calloc(1, sizeof(*fs));
+  if (!fs) {
+    perr(status, "out of memory");
+    goto bail;
+  }
+  fs->fd = -1;
+
+  // Open the file
+  fs->fd = open(path, O_RDONLY);
+  if (fs->fd == -1) {
+    perr(status, "cannot open file: %s", strerror(errno));
+    goto bail;
+  }
+
+  // Get the file size
+  struct stat st;
+  if (fstat(fs->fd, &st) == -1) {
+    perr(status, "cannot stat file: %s", strerror(errno));
+    goto bail;
+  }
+
+  fs->datalen = st.st_size;
+
+  // Memory-map the file
+  fs->data = mmap(NULL, fs->datalen, PROT_READ, MAP_PRIVATE, fs->fd, 0);
+  if (fs->data == MAP_FAILED) {
+    perr(status, "mmap failed: %s", strerror(errno));
+    goto bail;
+  }
+
+  // Provide a hint to the system that the memory will be accessed sequentially
+  if (madvise((void *)fs->data, fs->datalen, MADV_SEQUENTIAL) == -1) {
+    perr(status, "madvice failed: %s", strerror(errno));
+    goto bail;
+  }
+
+  // Close the file descriptor; the mapping remains valid until munmap()
+  close(fs->fd);
+  fs->fd = -1;
+
+  fs->csv = csv_open(context, qte, esc, delim, notifyfn);
+  if (!fs->csv) {
+    perr(status, "out of memory");
+    goto bail;
+  }
+
+  return fs;
+
+bail:
+  csv_filescan_close(fs);
+  return NULL;
+}
+
+void csv_filescan_close(csv_filescan_t *fs) {
+  if (!fs) {
+    return;
+  }
+
+  if (fs->fd >= 0) {
+    close(fs->fd);
+  }
+
+  if (fs->data) {
+    munmap((void *)fs->data, fs->datalen);
+  }
+
+  free(fs->csv);
+  free(fs->tmp);
+  free(fs);
+}
+
+int csv_filescan_run(csv_filescan_t *fs, csv_status_t *status) {
+  int64_t n = csv_feed(fs->csv, fs->data, fs->datalen, status);
+  if (n < 0) {
+    return -1;
+  }
+  if (n < fs->datalen) {
+    // append a '\n' to remainder and retry
+    int64_t remainder = fs->datalen - n;
+    if (fs->tmp) {
+      free(fs->tmp);
+      fs->tmp = 0;
+    }
+    fs->tmp = malloc(remainder + 1);
+    if (!fs->tmp) {
+      return perr(status, "out of memory");
+    }
+    memcpy(fs->tmp, fs->data + n, remainder);
+    fs->tmp[remainder] = '\n';
+    int m = csv_feed(fs->csv, fs->tmp, remainder + 1, status);
+    if (m < 0) {
+      return -1;
+    }
+    n += m - 1;
+  }
+  assert(n == fs->datalen);
+  if (n != fs->datalen) {
+    return perr(status, "internal error");
+  }
   return 0;
 }

@@ -4,10 +4,7 @@ extern "C" {
 #include "../src/csv.h"
 }
 
-#include <algorithm>
 #include <cstring>
-#include <random>
-#include <vector>
 
 using namespace std;
 

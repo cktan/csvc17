@@ -21,7 +21,7 @@ struct scan_t {
 
 static int __scan_calcflag(scan_t *scan) {
   const char *base = scan->base;
-  int len = scan->q - base;
+  int64_t len = scan->q - base;
   if (len < 32) {
     if (len <= 0) {
       return -1;
@@ -54,7 +54,7 @@ static inline void scan_init(scan_t *scan, char qte, char esc, char delim) {
   scan->esc_is_qte = (esc == qte);
 }
 
-static inline void scan_reset(scan_t *scan, const char *buf, int buflen) {
+static inline void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
   scan->orig = buf;
   scan->base = buf;
   scan->p = buf;

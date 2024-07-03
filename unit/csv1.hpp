@@ -4,10 +4,7 @@ extern "C" {
 #include "../src/csv.h"
 }
 
-#include <algorithm>
 #include <cstring>
-#include <random>
-#include <vector>
 
 using namespace std;
 
@@ -86,7 +83,7 @@ TEST_CASE("csv1") {
   }
   SUBCASE("2 rows with remainder") {
     const char *raw = "abc|def|ghi\njkl|mno|pqr\nxxx";
-    const int len = strlen(raw);
+    int len = strlen(raw);
     csv_t *csv =
         csv_open((void *)1, '"', '"', '|',
                  [](void *, int, const csv_value_t *, csv_t *) { return 0; });
@@ -98,7 +95,9 @@ TEST_CASE("csv1") {
     CHECK(status.fldno == 1);
     CHECK(status.fldpos == status.rowpos);
 
-    raw = raw + len - 3;
+    raw += n;
+    len -= n;
+    CHECK(len == 3);
     n = csv_feed(csv, raw, len, &status);
     CHECK(n == -1);
     csv_close(csv);
