@@ -38,6 +38,7 @@ int qte = '"';
 int esc = '"';
 int delim = ',';
 const char *nullstr = "(null)";
+int nulllen = 6;
 const char *pname = 0; // argv[0]
 const char *path = 0;
 
@@ -88,7 +89,7 @@ static void parse_cmdline(int argc, char **argv) {
   }
 
   if (optind + 1 == argc) {
-    path = optarg;
+    path = argv[optind];
     if (!is_regular_file(path)) {
       usage(1, "ERROR: the file must be a regular file");
     }
@@ -123,6 +124,7 @@ static void parse_cmdline(int argc, char **argv) {
   /* nullstr */
   if (n) {
     nullstr = n;
+    nulllen = strlen(n);
   }
 }
 
@@ -143,14 +145,20 @@ struct context_t {
 
 static int notify(void *ctx_, int n, const csv_value_t value[], csv_t *csv) {
   context_t *ctx = (context_t *)ctx_;
+  printf("[");
   for (int i = 0; i < n; i++) {
     int len = value[i].len;
     const char *ptr = value[i].ptr;
     if (i) {
-      puts(", ");
+      printf(", ");
     }
     if (!value[i].quoted) {
-      printf("'%.*s'", len, ptr);
+      if (nulllen == len &&
+	  0 == memcmp(nullstr, ptr, len)) {
+	printf("None");
+      } else {
+        printf("'%.*s'", len, ptr);
+      }
       continue;
     }
     if (ctx->max <= len) {
@@ -180,6 +188,7 @@ static int notify(void *ctx_, int n, const csv_value_t value[], csv_t *csv) {
       printf("'%.*s'", vlen, val);
     }
   }
+  printf("],\n");
   return 0;
 }
 
