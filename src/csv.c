@@ -467,25 +467,25 @@ int csv_filescan_run(csv_filescan_t *fs, csv_status_t *status) {
   if (n < 0) {
     return -1;
   }
-  if (n < fs->datalen) {
-    // append a '\n' to remainder and retry
-    int64_t remainder = fs->datalen - n;
-    if (fs->tmp) {
-      free(fs->tmp);
-      fs->tmp = 0;
-    }
-    fs->tmp = malloc(remainder + 1);
-    if (!fs->tmp) {
-      return perr(status, "out of memory");
-    }
-    memcpy(fs->tmp, fs->data + n, remainder);
-    fs->tmp[remainder] = '\n';
-    int m = csv_feed(fs->csv, fs->tmp, remainder + 1, status);
-    if (m < 0) {
-      return -1;
-    }
-    n += m - 1;
+  if (n == fs->datalen) {
+    return 0;
   }
+
+  // append a '\n' to remainder and retry
+  int64_t remainder = fs->datalen - n;
+  csv_status_t new_status; // this should be ignored
+  char *p = realloc(fs->tmp, remainder + 1);
+  if (!p) {
+    return perr(status, "out of memory");
+  }
+  fs->tmp = p;
+  memcpy(fs->tmp, fs->data + n, remainder);
+  fs->tmp[remainder] = '\n';
+  int m = csv_feed(fs->csv, fs->tmp, remainder + 1, &new_status);
+  if (m < 0) {
+    return -1;
+  }
+  n += m - 1;
   assert(n == fs->datalen);
   if (n != fs->datalen) {
     return perr(status, "internal error");

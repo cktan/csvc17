@@ -1,0 +1,13 @@
+input|expected|description
+abcd|abcd|simple
+ab"c"d|abcd|quoted string in the midst of unquoted string
+ab""c"d"|abcd|two quoted strings in the midst of unquoted string
+ab\cd|ab\cd|escape is ignored when not in quotes
+ab\\cd|ab\\cd|escape is ignored when not in quotes
+ab\"cd"|ab\cd|escape is ignored when not in quotes
+"abcd"|abcd|simple quoted string
+"ab\"cd"|ab{quote}cd|the quote is escaped
+"ab\\cd"|ab\cd|the backslash is escaped
+"ab\cd"|ab\cd|escape is ignored because c is neither backslash or quote
+"ab""cd"|abcd|inquote, out of quote, back in quote
+"ab"-"cd"|ab-cd|inquote, out of quote, back in quote

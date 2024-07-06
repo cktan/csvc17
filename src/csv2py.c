@@ -153,9 +153,8 @@ static int notify(void *ctx_, int n, const csv_value_t value[], csv_t *csv) {
       printf(", ");
     }
     if (!value[i].quoted) {
-      if (nulllen == len &&
-	  0 == memcmp(nullstr, ptr, len)) {
-	printf("None");
+      if (nulllen == len && 0 == memcmp(nullstr, ptr, len)) {
+        printf("None");
       } else {
         printf("'%.*s'", len, ptr);
       }
@@ -206,7 +205,11 @@ int main(int argc, char *argv[]) {
   }
   printf("[\n");
   if (csv_filescan_run(scan, &status)) {
-    fprintf(stderr, "csv_scanfile_run: %s", status.errmsg);
+    fprintf(stderr, "csv_scanfile_run: %s\n", status.errmsg);
+    fprintf(stderr, "     row num: %d\n", status.rowno);
+    fprintf(stderr, "     row pos: %ld\n", status.rowpos);
+    fprintf(stderr, "     fld num: %d\n", status.fldno);
+    fprintf(stderr, "     fld pos: %d\n", status.fldpos);
     exit(1);
   }
   printf("]\n");
