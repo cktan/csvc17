@@ -1,5 +1,3 @@
-CC = gcc-11
-
 ARCH := $(shell uname -m)
 
 CFLAGS := -std=c17 -Wmissing-declarations -Wall -Wextra -MMD -fPIC -D_GNU_SOURCE
