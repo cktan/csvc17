@@ -16,11 +16,12 @@ struct ebuf_t {
 
 typedef struct csvx_t csvx_t;
 struct csvx_t {
-  void* context;
-  int qte, esc, delim;
-  csv_feed_t* feed;
-  csv_perrow_t* perrow;
-  ebuf_t ebuf;
+  void* ctx;  // user context
+  int qte, esc, delim; // special chars
+
+  csv_feed_t* feed; // feeder
+  csv_perrow_t* perrow; // per-row callback
+  ebuf_t ebuf; // error buffer
 
   int lineno;	// current line number
   int rowno;    // current row number
@@ -87,8 +88,8 @@ static inline int ensure_value(csvx_t *cb) {
 
 
 //////////////////
-// grow cb->buf[]
-static int expand_buf(csvx_t *cb) {
+// squeeze or grow cb->buf[]
+static int ensure_buf(csvx_t *cb) {
   int N = cb->buf.top - cb->buf.bot;
   // first, see if a squeeze is sufficient
   if (cb->buf.bot) {
@@ -122,15 +123,47 @@ static int expand_buf(csvx_t *cb) {
   return 0;
 }
 
+static int run(csvx_t* cb) {
+  int N;
+  if (!cb->eof) {
+    DO(ensure_buf(cb));
+    char* p = cb->buf.ptr + cb->buf.top;
+    char* q = cb->buf.ptr + cb->buf.max;
+    N = cb->feed(cb->ctx, p, q - p);
+    if (N < 0) {
+      return -1;
+    }
+    cb->eof = (N == 0);
+    cb->buf.top += N;
+  }
 
-
-int csv_run(csv_t* csv) {
-  csvx_t* cb = csv->__internal;
+  while (1) {
+    // break if buffer is empty
+    N = cb->buf.top - cb->buf.bot;
+    if (N == 0) {
+      return 0;
+    }
+    // get ready for a new value
+    DO(ensure_value(cb));
+    
+  }
+  
   return 0;
 }
 
 
-csv_t csv_open(void* context, int qte, int esc, int delim,
+void csv_run(csv_t* csv) {
+  csvx_t* cb = csv->__internal;
+  cb->ebuf.ptr = csv->errmsg;
+  cb->ebuf.len = sizeof(csv->errmsg);
+
+  while (csv->ok && !(cb->eof && cb->buf.bot == cb->buf.top)) {
+    csv->ok = (run(cb) == 0);
+  }
+}
+
+
+csv_t csv_open(void* ctx, int qte, int esc, int delim,
 	       csv_feed_t* feed, csv_perrow_t* perrow) {
   csv_t ret = {0};
   csvx_t* cb = calloc(1, sizeof(*cb));
@@ -140,12 +173,14 @@ csv_t csv_open(void* context, int qte, int esc, int delim,
   }
   ret.__internal = cb;
   
-  cb->context = context;
+  cb->ctx = ctx;
   cb->qte = qte;
   cb->esc = esc;
   cb->delim = delim;
   cb->feed = feed;
   cb->perrow = perrow;
+
+  ret.ok = true;
   return ret;
 }
 

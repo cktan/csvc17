@@ -47,9 +47,9 @@ CSV_EXTERN csv_t csv_open(void* context, int qte, int esc, int delim,
 
 /**
  *  Run the scan and invoke callbacks on demand.
- *  Return 0 on success, -1 otherwise.
+ *  Check csv->ok for success or failure.
  */
-CSV_EXTERN int csv_run(csv_t* csv);
+CSV_EXTERN void csv_run(csv_t* csv);
 
 
 /**
