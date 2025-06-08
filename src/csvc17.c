@@ -44,6 +44,34 @@ struct csvx_t {
   } value;
 };
 
+typedef struct scan_t scan_t;
+struct scan_t {
+  char *p;
+  char *q;
+  int qte, esc, delim;
+};
+
+static void scan_init(scan_t *sc, csvx_t *cb) {
+  memset(sc, 0, sizeof(*sc));
+  sc->p = cb->buf.ptr + cb->buf.bot;
+  sc->q = cb->buf.ptr + cb->buf.top;
+  sc->qte = cb->qte;
+  sc->esc = cb->esc;
+  sc->delim = cb->delim;
+}
+
+static char *scan_next(scan_t *sc) {
+  for (; sc->p < sc->q; sc->p++) {
+    int ch = *sc->p;
+    if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
+      return sc->p++;
+    }
+  }
+  return NULL;
+}
+
+static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
+
 /*
  *  Format an error into ebuf[]. Always return -1.
  */
