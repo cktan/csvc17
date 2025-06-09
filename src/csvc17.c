@@ -171,8 +171,6 @@ static int onerow(csvx_t *cb) {
     cb->buf.top += N;
     cb->buf.finbyte =
         (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
-
-    // If last row not properly terminated, add a newline.
     if (cb->eof && cb->buf.finbyte != '\n') {
       cb->buf.ptr[cb->buf.top++] = '\n';
     }

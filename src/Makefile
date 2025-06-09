@@ -1,21 +1,51 @@
-TOPDIR = ..
-CFILES = csv.c
+HFILES = csvc17.h
+CFILES = csvc17.c
 OBJ = $(CFILES:.c=.o)
-EXEC = csv2py
 
-all: libcsv.a $(EXEC)
+CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
+LIB_VERSION = 1.0
+LIB = libcsvc17.a
+LIB_SHARED = libcsvc17.so.$(LIB_VERSION)
+EXEC =
 
-libcsv.a: $(OBJ)
+ARCH := $(shell uname -m)
+ifeq ($(ARCH), x86_64)
+    # Safe for AVX2 cpu (will auto-use avx512bw where available)
+    CFLAGS += -mavx2 -mno-avx512f
+else ifeq ($(ARCH),aarch64)
+    $(error Fill this in later)
+else
+    $(error Unsupported CPU $(ARCH))
+endif
+
+ifdef DEBUG
+    CFLAGS += -O0 -g
+else
+    CFLAGS += -O3 -DNDEBUG
+endif
+
+all: $(EXEC) $(LIB) $(LIB_SHARED) 
+
+*.o: $(HFILES)
+
+libcsvc17.a: $(OBJ)
 	ar -rcs $@ $^
 
-$(EXEC): libcsv.a
+$(LIB_SHARED): $(OBJ)
+	$(CC) -shared -o $@ $^
+
+-include $(OBJ:%.o=%.d) $(EXEC:%=%.d)
+
+test: all
 
 clean:
-	rm -f *.o *.a *.d
+	rm -f *.o *.d *.a *.so.* $(EXEC)
+
+distclean: clean
 
 format:
-	clang-format -i *.c *.h 
+	clang-format -i *.[ch] 
 
-include $(TOPDIR)/common.mk
 
--include $(OBJ:%.o=%.d)
+.PHONY: all test clean distclean format
+
