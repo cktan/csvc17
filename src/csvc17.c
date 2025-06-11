@@ -21,7 +21,7 @@ typedef struct status_t status_t;
 struct status_t {
   int lineno; // current line number
   int rowno;  // current row number
-  int colno;  // current column number
+  // note: current column number is (csvx_t::value.top + 1)
 };
 
 typedef struct scan_t scan_t;
@@ -31,15 +31,14 @@ struct scan_t {
   int qte, esc, delim; // special chars
 };
 
-
 typedef struct csvx_t csvx_t;
 struct csvx_t {
-  void *ctx;           // user context
+  void *ctx;            // user context
   csv_feed_t *feed;     // feeder
   csv_perrow_t *perrow; // per-row callback
   ebuf_t ebuf;          // error buffer
-  int qte, esc, delim; // special chars
-  bool eof;  // true if feed() signaled EOF
+  int qte, esc, delim;  // special chars
+  bool eof;             // true if feed() signaled EOF
 
   status_t status;
 
@@ -55,7 +54,7 @@ struct csvx_t {
   } value;
 };
 
-static scan_t scan_reset(const csvx_t* cb) {
+static scan_t scan_reset(const csvx_t *cb) {
   scan_t scan = {0};
   scan.qte = cb->qte;
   scan.esc = cb->esc;
@@ -65,13 +64,10 @@ static scan_t scan_reset(const csvx_t* cb) {
   return scan;
 }
 
-
 // True if EOF and buffer is empty
-static inline bool finished(const csvx_t* cb) {
+static inline bool finished(const csvx_t *cb) {
   return cb->eof && (cb->buf.bot == cb->buf.top);
 }
-
-
 
 /* get ptr to the next special char */
 static char *scan_next(scan_t *sc) {
@@ -90,13 +86,13 @@ static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
 /*
  *  Format an error into ebuf[]. Always return -1.
  */
-static int RETERROR(csvx_t* cb, const char *fmt, ...) {
+static int RETERROR(csvx_t *cb, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
   char *p = cb->ebuf.ptr;
   char *q = p + cb->ebuf.len;
-  snprintf(p, q - p, "(line %d, row %d, col %d)", cb->status.lineno, cb->status.rowno,
-           cb->status.colno);
+  snprintf(p, q - p, "(line %d, row %d, col %d)", cb->status.lineno,
+           cb->status.rowno, cb->value.top + 1);
   p += strlen(p);
   vsnprintf(p, q - p, fmt, args);
   return -1;
@@ -170,9 +166,8 @@ static int ensure_buf(csvx_t *cb) {
   return 0;
 }
 
-
 // fill cb->buf[]. Return 0 on success, -1 otherwise.
-static int fill_buf(csvx_t* cb) {
+static int fill_buf(csvx_t *cb) {
   assert(!cb->eof);
   DO(ensure_buf(cb));
   char *p = cb->buf.ptr + cb->buf.top;
@@ -186,13 +181,12 @@ static int fill_buf(csvx_t* cb) {
   cb->eof = (N == 0);
   cb->buf.top += N;
   cb->buf.finbyte =
-    (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
+      (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
   if (cb->eof && cb->buf.finbyte != '\n') {
     cb->buf.ptr[cb->buf.top++] = '\n';
   }
   return 0;
 }
-
 
 /*
   e: escape
@@ -212,11 +206,118 @@ static int fill_buf(csvx_t* cb) {
    +------- [ENDROW] -------+
 
 */
-// Scan one row. Return #bytes consumed, 0 if no row, -1 on error.
-static int onerow(scan_t* scan) {
+// Scan one row. Return #rows scanned, or -1 on error.
+// This call will corrupt cb->status on error.
+static int onerow(scan_t *scan, csvx_t *cb) {
+  const char esc = cb->esc;
+  const char qte = cb->qte;
+  const char delim = cb->delim;
+
+  // p points to start of value; pp points to the current special char
+  const char *p = scan->p;
+  const char *pp = 0;
+  char ch; // char at *pp
+
+  cb->value.top = 0;
+  cb->status.rowno++;
+
+STARTVAL:
+  csv_value_t value = {0};
+  value.ptr = p;
+  goto UNQUOTED;
+
+UNQUOTED:
+  pp = scan_next(scan);
+  // ch in [0, \n, delim, qte, or esc]
+  ch = pp ? *pp : 0;
+  if (ch == qte) {
+    goto QUOTED;
+  }
+  if (ch == delim) {
+    goto ENDVAL;
+  }
+  if (ch == '\n') {
+    goto ENDROW;
+  }
+  if (ch == esc) {
+    goto UNQUOTED; // esc in an unquoted field: ignore.
+  }
+  assert(ch == 0);
+  return RETERROR(cb, "%s", "unterminated row");
+
+QUOTED:
+  value.quoted = 1;
+  pp = scan_next(scan);
+  // ch in [0, \n, delim, qte, or esc]
+  ch = pp ? *pp : 0;
+
+  if (ch == qte || ch == esc) {
+
+    // CASE WHEN esc == qte
+    if (qte == esc) {
+      pp = scan_peek(scan);
+      // If two quotes: pop and continue in QUOTED state.
+      if (pp && *pp == qte) {
+        pp = scan_next(scan);
+        goto QUOTED;
+      }
+      // If one quote: exit QUOTED state, continue in UNQUOTED state.
+      goto UNQUOTED;
+    }
+
+    // CASE WHEN esc != qte
+    if (ch == qte) {
+      // the quote was not escaped, so we exit QUOTED state.
+      goto UNQUOTED;
+    }
+
+    assert(ch == esc);
+    // here, ch is esc and we have either eq, ee, or ex.
+    // for eq or ee, escape one char and continue in QUOTED state.
+    // for ex, do nothing and continue in QUOTED state.
+    pp = scan_peek(scan);
+    if (pp && (*pp == qte || *pp == esc)) {
+      // for eq or ee, eat the escaped char.
+      pp = scan_next(scan);
+      goto QUOTED;
+    }
+    goto QUOTED;
+  }
+
+  if (!ch) {
+    return RETERROR(cb, "%s", "unterminated quote");
+  }
+
+  // still in quote
+  assert(ch == '\n' || ch == delim);
+  goto QUOTED;
+
+ENDVAL:
+  // record the val
+  value.len = pp - p;
+  DO(ensure_value(cb));
+  cb->value.ptr[cb->value.top++] = value;
+
+  // start next val
+  p = pp + 1;
+
+  goto STARTVAL;
+
+ENDROW:
+  // record the val
+  value.len = pp - p;
+  DO(ensure_value(cb));
+  cb->value.ptr[cb->value.top++] = value;
+
+  // handle \r\n
+  if (value.len && value.ptr[value.len - 1] == '\r') {
+    value.len--;
+  }
+
+  // eat the newline
+  scan->p++;
   return 0;
 }
-
 
 void csv_parse(csv_t *csv) {
   csvx_t *cb = csv->__internal;
@@ -225,27 +326,30 @@ void csv_parse(csv_t *csv) {
   csv->ok = false;
 
   while (!finished(cb)) {
-    status_t saved_status = cb->status;
     int N;
     if (!cb->eof) {
       if (fill_buf(cb)) {
-	return;
+        return;
       }
     }
 
     // set up a scan of the cb->buf[]
     scan_t scan = scan_reset(cb);
+    char *saved_p = scan.p;
+
+    // Scan row by row
     for (;;) {
-      N = onerow(&scan);
+      status_t saved_status = cb->status;
+      N = onerow(&scan, cb);
       if (N < 0) {
-	return;
+        return;
       }
       if (N == 0) {
-	// data in cb->buf[] is not enough to fill one row
-	cb->status = saved_status;  // rollback the status
-	break;
+        // data in cb->buf[] is not enough to fill one row
+        cb->status = saved_status; // rollback the status
+        break;
       }
-      cb->buf.bot += N;
+      cb->buf.bot += scan.p - saved_p;
     }
   }
 
@@ -265,7 +369,10 @@ csv_t csv_open(void *ctx, int qte, int esc, int delim, csv_feed_t *feed,
   cb->ctx = ctx;
   cb->feed = feed;
   cb->perrow = perrow;
-  
+  cb->qte = qte;
+  cb->esc = esc;
+  cb->delim = delim;
+
   ret.ok = true;
   return ret;
 }

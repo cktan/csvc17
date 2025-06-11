@@ -28,13 +28,15 @@ struct csv_value_t {
  *  This is a callback that is invoked when the parser needs data.
  *  Return #bytes copied into buf on success, 0 on EOF, -1 on error.
  */
-typedef int csv_feed_t(void *context, char *buf, int bufsz, char* errbuf, int errsz);
+typedef int csv_feed_t(void *context, char *buf, int bufsz, char *errbuf,
+                       int errsz);
 
 /**
  *  This is a callback that is invoked per row.
  *  Return 0 on success, -1 otherwise.
  */
-typedef int csv_perrow_t(void *context, int n, const csv_value_t value[], char* errbuf, int errsz);
+typedef int csv_perrow_t(void *context, int n, const csv_value_t value[],
+                         char *errbuf, int errsz);
 
 /**
  *  Open a scan. The csv_t handle returned must be freed using csv_close() after
