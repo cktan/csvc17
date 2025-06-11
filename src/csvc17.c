@@ -29,7 +29,6 @@ struct scan_t {
   char *p;
   char *q;
   int qte, esc, delim; // special chars
-  
 };
 
 
@@ -39,9 +38,9 @@ struct csvx_t {
   csv_feed_t *feed;     // feeder
   csv_perrow_t *perrow; // per-row callback
   ebuf_t ebuf;          // error buffer
+  int qte, esc, delim; // special chars
   bool eof;  // true if feed() signaled EOF
 
-  scan_t scan;
   status_t status;
 
   struct {
@@ -55,6 +54,17 @@ struct csvx_t {
     int top, max;
   } value;
 };
+
+static scan_t scan_reset(const csvx_t* cb) {
+  scan_t scan = {0};
+  scan.qte = cb->qte;
+  scan.esc = cb->esc;
+  scan.delim = cb->delim;
+  scan.p = cb->buf.ptr + cb->buf.bot;
+  scan.q = cb->buf.ptr + cb->buf.top;
+  return scan;
+}
+
 
 // True if EOF and buffer is empty
 static inline bool finished(const csvx_t* cb) {
@@ -80,13 +90,13 @@ static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
 /*
  *  Format an error into ebuf[]. Always return -1.
  */
-static int RETERROR(ebuf_t ebuf, const status_t* status, const char *fmt, ...) {
+static int RETERROR(csvx_t* cb, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  char *p = ebuf.ptr;
-  char *q = p + ebuf.len;
-  snprintf(p, q - p, "(line %d, row %d, col %d)", status->lineno, status->rowno,
-           status->colno);
+  char *p = cb->ebuf.ptr;
+  char *q = p + cb->ebuf.len;
+  snprintf(p, q - p, "(line %d, row %d, col %d)", cb->status.lineno, cb->status.rowno,
+           cb->status.colno);
   p += strlen(p);
   vsnprintf(p, q - p, fmt, args);
   return -1;
@@ -94,7 +104,7 @@ static int RETERROR(ebuf_t ebuf, const status_t* status, const char *fmt, ...) {
 
 //////////////////
 // grow cb->value[]
-static int expand_value(csvx_t *cb, const status_t* status) {
+static int expand_value(csvx_t *cb) {
   int max = cb->value.max;
 #ifndef NDEBUG
   max = max * 1.5 + 10;
@@ -102,12 +112,12 @@ static int expand_value(csvx_t *cb, const status_t* status) {
   max = max + 1;
 #endif
   if (max < 0) {
-    return RETERROR(cb->ebuf, status, "%s", "buffer overflow");
+    return RETERROR(cb, "%s", "buffer overflow");
   }
 
   csv_value_t *newval = realloc(cb->value.ptr, max * sizeof(*newval));
   if (!newval) {
-    return RETERROR(cb->ebuf, status, "%s", "out of memory");
+    return RETERROR(cb, "%s", "out of memory");
   }
   cb->value.ptr = newval;
   cb->value.max = max;
@@ -117,16 +127,16 @@ static int expand_value(csvx_t *cb, const status_t* status) {
 
 //////////////////
 // make sure csv->value[] can accomodate at least one value
-static inline int ensure_value(csvx_t *cb, const status_t* status) {
+static inline int ensure_value(csvx_t *cb) {
   if (cb->value.top >= cb->value.max) {
-    DO(expand_value(cb, status));
+    DO(expand_value(cb));
   }
   return 0;
 }
 
 //////////////////
 // squeeze or grow cb->buf[]
-static int ensure_buf(csvx_t *cb, const status_t* status) {
+static int ensure_buf(csvx_t *cb) {
   int N = cb->buf.top - cb->buf.bot;
   // first, see if a squeeze is sufficient
   if (cb->buf.bot) {
@@ -144,13 +154,13 @@ static int ensure_buf(csvx_t *cb, const status_t* status) {
   max = max + 128;
 #endif
   if (max < 0) {
-    return RETERROR(cb->ebuf, status, "%s", "buffer overflow");
+    return RETERROR(cb, "%s", "buffer overflow");
   }
 
   // 16-byte aligned for SIMD
   void *newbuf = aligned_alloc(16, max);
   if (!newbuf) {
-    return RETERROR(cb->ebuf, status, "%s", "out of memory");
+    return RETERROR(cb, "%s", "out of memory");
   }
 
   memcpy(newbuf, cb->buf.ptr, N);
@@ -162,9 +172,9 @@ static int ensure_buf(csvx_t *cb, const status_t* status) {
 
 
 // fill cb->buf[]. Return 0 on success, -1 otherwise.
-static int fill_buf(csvx_t* cb, const status_t* status) {
+static int fill_buf(csvx_t* cb) {
   assert(!cb->eof);
-  DO(ensure_buf(cb, status));
+  DO(ensure_buf(cb));
   char *p = cb->buf.ptr + cb->buf.top;
   char *q = cb->buf.ptr + cb->buf.max;
   int N = q - p;
@@ -214,18 +224,17 @@ void csv_parse(csv_t *csv) {
   cb->ebuf.len = sizeof(csv->errmsg);
   csv->ok = false;
 
-  scan_t scan = {0};
   while (!finished(cb)) {
-    status_t status = cb->status;
+    status_t saved_status = cb->status;
     int N;
     if (!cb->eof) {
-      if (fill_buf(cb, &status)) {
+      if (fill_buf(cb)) {
 	return;
       }
-      scan.p = cb->buf.ptr + cb->buf.bot;
-      scan.q = cb->buf.ptr + cb->buf.top;
     }
-    
+
+    // set up a scan of the cb->buf[]
+    scan_t scan = scan_reset(cb);
     for (;;) {
       N = onerow(&scan);
       if (N < 0) {
@@ -233,6 +242,7 @@ void csv_parse(csv_t *csv) {
       }
       if (N == 0) {
 	// data in cb->buf[] is not enough to fill one row
+	cb->status = saved_status;  // rollback the status
 	break;
       }
       cb->buf.bot += N;
@@ -255,9 +265,6 @@ csv_t csv_open(void *ctx, int qte, int esc, int delim, csv_feed_t *feed,
   cb->ctx = ctx;
   cb->feed = feed;
   cb->perrow = perrow;
-  cb->scan.qte = qte;
-  cb->scan.esc = esc;
-  cb->scan.delim = delim;
   
   ret.ok = true;
   return ret;
