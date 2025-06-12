@@ -1,3 +1,6 @@
+/* Copyright (c) 2024-2025, CK Tan.
+ * https://github.com/cktan/csvc17/blob/main/LICENSE
+ */
 #include "csvc17.h"
 #include <assert.h>
 #include <stdarg.h>
