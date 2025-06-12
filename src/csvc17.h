@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 #define CSV_EXTERN extern "C"
@@ -46,14 +47,21 @@ typedef int csv_perrow_t(void *context, int n, const csv_value_t value[],
  * exceptions (or longjmp) being thrown from inside the callback routines during
  * parse() operation.
  */
-CSV_EXTERN csv_t csv_open(void *context, int qte, int esc, int delim,
-                          csv_feed_t *feed, csv_perrow_t *perrrow);
+CSV_EXTERN csv_t csv_open(int qte, int esc, int delim);
 
 /**
- *  Run the scan and invoke callbacks on demand.
+ *  Run the scan and invoke callbacks on demand. Always returns the csv param.
  *  Check csv->ok for success or failure.
  */
-CSV_EXTERN void csv_parse(csv_t *csv);
+CSV_EXTERN csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
+                            csv_perrow_t *perrrow);
+
+/**
+ *  Parse a file. This function will call csv_parse(). Always returns the csv
+ * param. Check csv->ok for success or failure.
+ */
+CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
+                                 csv_perrow_t *perrow);
 
 /**
  *  Close the scan and release resources.

@@ -33,25 +33,23 @@ struct scan_t {
 
 typedef struct csvx_t csvx_t;
 struct csvx_t {
-  void *ctx;            // user context
-  csv_feed_t *feed;     // feeder
-  csv_perrow_t *perrow; // per-row callback
-  ebuf_t ebuf;          // error buffer
-  int qte, esc, delim;  // special chars
-  bool eof;             // true if feed() signaled EOF
+  ebuf_t ebuf;         // error buffer
+  int qte, esc, delim; // special chars
+  bool eof;            // true if feed() signaled EOF
 
   status_t status;
 
   struct {
     char *ptr; // buf of size max where [bot..top) is valid
     int bot, top, max;
-    int finbyte; // value of ptr[top-1]
   } buf;
 
   struct {
     csv_value_t *ptr;
     int top, max;
   } value;
+
+  FILE *fp; // file ptr if any
 };
 
 static scan_t scan_reset(const csvx_t *cb) {
@@ -82,6 +80,17 @@ static char *scan_next(scan_t *sc) {
 
 /* get ptr to the current char */
 static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
+
+static int read_file(void *context, char *buf, int bufsz, char *errmsg,
+                     int errsz) {
+  FILE *fp = context;
+  int N = fread(buf, 1, bufsz, fp);
+  if (ferror(fp)) {
+    snprintf(errmsg, errsz, "%s", "cannot read file");
+    return -1;
+  }
+  return N;
+}
 
 /*
  *  Format an error into ebuf[]. Always return -1.
@@ -167,22 +176,31 @@ static int ensure_buf(csvx_t *cb) {
 }
 
 // fill cb->buf[]. Return 0 on success, -1 otherwise.
-static int fill_buf(csvx_t *cb) {
+static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
   assert(!cb->eof);
   DO(ensure_buf(cb));
   char *p = cb->buf.ptr + cb->buf.top;
   char *q = cb->buf.ptr + cb->buf.max;
+  if (cb->fp) {
+    // HACK: this is a hack for csv_parse_file.
+    // If cb->fp is set, use this as context to call read_file().
+    assert((void *)feed == (void *)read_file);
+    context = cb->fp;
+  }
   int N = q - p;
   // reserve 1 byte to add a \n if last row not terminated properly
-  N = cb->feed(cb->ctx, p, N - 1, cb->ebuf.ptr, cb->ebuf.len);
+  N = feed(context, p, N - 1, cb->ebuf.ptr, cb->ebuf.len);
   if (N < 0) {
     return -1;
   }
   cb->eof = (N == 0);
   cb->buf.top += N;
-  cb->buf.finbyte =
-      (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
-  if (cb->eof && cb->buf.finbyte != '\n') {
+
+  // value of last byte in buf[]
+  int finbyte = (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
+
+  // if at EOF and last byte is not \n, then: add a newline
+  if (cb->eof && finbyte != '\n') {
     cb->buf.ptr[cb->buf.top++] = '\n';
   }
   return 0;
@@ -220,6 +238,7 @@ static int onerow(scan_t *scan, csvx_t *cb) {
 
   cb->value.top = 0;
   cb->status.rowno++;
+  cb->status.lineno++;
 
 STARTVAL:
   csv_value_t value = {0};
@@ -289,6 +308,9 @@ QUOTED:
   }
 
   // still in quote
+  if (ch == '\n') {
+    cb->status.lineno++;
+  }
   assert(ch == '\n' || ch == delim);
   goto QUOTED;
 
@@ -319,17 +341,25 @@ ENDROW:
   return 0;
 }
 
-void csv_parse(csv_t *csv) {
+csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
+                 csv_perrow_t *perrow) {
+  if (!csv->ok) {
+    assert(csv->errmsg[0]);
+    return csv;
+  }
+  csv->ok = false;
+  csv->errmsg[0] = 0;
+
   csvx_t *cb = csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
-  csv->ok = false;
 
   while (!finished(cb)) {
     int N;
     if (!cb->eof) {
-      if (fill_buf(cb)) {
-        return;
+      if (fill_buf(cb, context, feed)) {
+        assert(csv->errmsg[0]);
+        return csv;
       }
     }
 
@@ -342,22 +372,32 @@ void csv_parse(csv_t *csv) {
       status_t saved_status = cb->status;
       N = onerow(&scan, cb);
       if (N < 0) {
-        return;
+        assert(csv->errmsg[0]);
+        return csv;
       }
       if (N == 0) {
         // data in cb->buf[] is not enough to fill one row
         cb->status = saved_status; // rollback the status
         break;
       }
+      assert(N == 1);
       cb->buf.bot += scan.p - saved_p;
+
+      if (perrow(context, cb->value.top, cb->value.ptr, cb->ebuf.ptr,
+                 cb->ebuf.len)) {
+        if (!cb->ebuf.ptr[0]) {
+          RETERROR(cb, "%s", "perrow callback failed");
+        }
+        return csv;
+      }
     }
   }
 
   csv->ok = true;
+  return csv;
 }
 
-csv_t csv_open(void *ctx, int qte, int esc, int delim, csv_feed_t *feed,
-               csv_perrow_t *perrow) {
+csv_t csv_open(int qte, int esc, int delim) {
   csv_t ret = {0};
   csvx_t *cb = calloc(1, sizeof(*cb));
   if (!cb) {
@@ -366,9 +406,6 @@ csv_t csv_open(void *ctx, int qte, int esc, int delim, csv_feed_t *feed,
   }
   ret.__internal = cb;
 
-  cb->ctx = ctx;
-  cb->feed = feed;
-  cb->perrow = perrow;
   cb->qte = qte;
   cb->esc = esc;
   cb->delim = delim;
@@ -383,6 +420,31 @@ void csv_close(csv_t *csv) {
     if (cb) {
       free(cb->buf.ptr);
       free(cb->value.ptr);
+      if (cb->fp) {
+        fclose(cb->fp);
+      }
     }
   }
+}
+
+csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
+                      csv_perrow_t *perrow) {
+  if (!csv->ok) {
+    assert(csv->errmsg[0]);
+    return csv;
+  }
+  csv->ok = false;
+  csv->errmsg[0] = 0;
+
+  csvx_t *cb = csv->__internal;
+  cb->ebuf.ptr = csv->errmsg;
+  cb->ebuf.len = sizeof(csv->errmsg);
+
+  if (cb->fp) {
+    RETERROR(cb, "%s", "busy file handle");
+    return csv;
+  }
+
+  cb->fp = fp;
+  return csv_parse(csv, context, read_file, perrow);
 }
