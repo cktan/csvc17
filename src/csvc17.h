@@ -40,7 +40,8 @@ typedef int csv_feed_t(void *context, char *buf, int bufsz, char *errbuf,
  *  Return 0 on success, -1 otherwise.
  */
 typedef int csv_perrow_t(void *context, int n, const csv_value_t value[],
-                         char *errbuf, int errsz);
+                         int64_t lineno, int64_t rowno, char *errbuf,
+                         int errsz);
 
 /**
  *  Open a scan. The csv_t handle returned must be freed using csv_close() after
@@ -70,5 +71,10 @@ CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
  *  Close the scan and release resources.
  */
 CSV_EXTERN void csv_close(csv_t *csv);
+
+/**
+ *  Unquote a string
+ */
+CSV_EXTERN int csv_unquote(char *buf, int bufsz, int qte);
 
 #endif

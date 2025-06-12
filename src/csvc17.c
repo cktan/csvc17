@@ -3,6 +3,7 @@
  */
 #include "csvc17.h"
 #include <assert.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,8 +23,8 @@ struct ebuf_t {
 
 typedef struct status_t status_t;
 struct status_t {
-  int lineno; // current line number
-  int rowno;  // current row number
+  int64_t lineno; // current line number
+  int64_t rowno;  // current row number
   // note: current column number is (csvx_t::value.top + 1)
 };
 
@@ -103,8 +104,8 @@ static int RETERROR(csvx_t *cb, const char *fmt, ...) {
   va_start(args, fmt);
   char *p = cb->ebuf.ptr;
   char *q = p + cb->ebuf.len;
-  snprintf(p, q - p, "(line %d, row %d, col %d)", cb->status.lineno,
-           cb->status.rowno, cb->value.top + 1);
+  snprintf(p, q - p, "(line %" PRId64 ", row %" PRId64 ", col %d)",
+           cb->status.lineno, cb->status.rowno, cb->value.top + 1);
   p += strlen(p);
   vsnprintf(p, q - p, fmt, args);
   return -1;
@@ -386,8 +387,8 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       assert(N == 1);
       cb->buf.bot += scan.p - saved_p;
 
-      if (perrow(context, cb->value.top, cb->value.ptr, cb->ebuf.ptr,
-                 cb->ebuf.len)) {
+      if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,
+                 cb->status.rowno, cb->ebuf.ptr, cb->ebuf.len)) {
         if (!cb->ebuf.ptr[0]) {
           RETERROR(cb, "%s", "perrow callback failed");
         }
@@ -426,6 +427,7 @@ void csv_close(csv_t *csv) {
       if (cb->fp) {
         fclose(cb->fp);
       }
+      free(cb);
     }
   }
 }
