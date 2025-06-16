@@ -15,6 +15,9 @@ all: $(EXECS)
 driver: driver.cpp ../src/libcsvc17.a
 	$(CXX) $(CXXFLAGS) -o $@ $@.cpp -L ../src -lcsvc17
 
+test: all
+	./driver
+
 clean:
 	rm -f *.o *.a *.d $(EXECS)
 
@@ -23,4 +26,4 @@ format:
 
 -include $(EXECS:%=%.d)
 
-.PHONY: all clean format
+.PHONY: all clean format test
