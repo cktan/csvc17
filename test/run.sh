@@ -17,7 +17,7 @@ for i in {1..100}; do
 
         echo test ${i}
 
-	$DIR/../src/csv2py -n '' -d '|' $IN > $OUT ||
+	./csv2py -n '' -d '|' $IN > $OUT ||
                 { echo '--- csvnorm FAILED ---'; exit 1; }
         python3 $DIR/pydiff.py $OUT $GOOD ||
                 { echo '--- pydiff FAILED ---'; exit 1; }
@@ -34,7 +34,7 @@ for i in {1..100}x; do
 
         echo test ${i}
 
-	$DIR/../src/csv2py -n '' -e '\' -d '|' $IN > $OUT ||
+	./csv2py -n '' -e '\' -d '|' $IN > $OUT ||
                 { echo '--- csvnorm FAILED ---'; exit 1; }
         python3 $DIR/pydiff.py $OUT $GOOD ||
                 { echo '--- pydiff FAILED ---'; exit 1; }

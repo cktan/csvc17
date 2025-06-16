@@ -373,15 +373,17 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
         assert(csv->errmsg[0]);
         return csv;
       }
+      assert(cb->buf.bot <= cb->buf.top);
     }
 
     // set up a scan of the cb->buf[]
     scan_t scan = scan_reset(cb);
-    char *saved_p = scan.p;
+    assert(scan.p <= scan.q);
 
     // Scan row by row
     for (;;) {
       status_t saved_status = cb->status;
+      char *saved_p = scan.p;
       N = onerow(&scan, cb);
       if (N < 0) {
         assert(csv->errmsg[0]);
@@ -446,9 +448,6 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
     assert(csv->errmsg[0]);
     return csv;
   }
-  csv->ok = false;
-  csv->errmsg[0] = 0;
-
   csvx_t *cb = csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
