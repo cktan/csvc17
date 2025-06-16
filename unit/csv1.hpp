@@ -1,105 +1,92 @@
 #pragma once
 
 extern "C" {
-#include "../src/csv.h"
+#include "../src/csvc17.h"
 }
 
 #include <cstring>
 
 using namespace std;
 
-TEST_CASE("csv1") {
-  csv_status_t status;
+const char QTE = '"';
+const char ESC = '"';
+const char DELIM = '|';
 
+struct context_t {
+  csv_t csv;
+  const char *doc;
+  std::vector<std::vector<std::string>> result;
+  context_t(const char *doc_) : doc(doc_) { csv = csv_open(QTE, ESC, DELIM); }
+  ~context_t() { csv_close(&csv); }
+  context_t(context_t &) = delete;
+  context_t &operator=(context_t &) = delete;
+  context_t(context_t &&) = delete;
+  context_t &operator=(context_t &&) = delete;
+};
+
+static int feed(void *ctx_, char *buf, int bufsz, char *errbuf, int errsz) {
+  (void)errbuf;
+  (void)errsz;
+  context_t *ctx = (context_t *)ctx_;
+  int len = strlen(ctx->doc);
+  if (len > bufsz) {
+    len = bufsz;
+  }
+  memcpy(buf, ctx->doc, len);
+  ctx->doc += len;
+  return len;
+}
+
+static int perrow(void *ctx_, int n, csv_value_t value[], int64_t lineno,
+                  int64_t rowno, char *errbuf, int errsz) {
+  (void)lineno;
+  (void)rowno;
+  (void)errbuf;
+  (void)errsz;
+  context_t *ctx = (context_t *)ctx_;
+  std::vector<std::string> row;
+  row.resize(n);
+  for (int i = 0; i < n; i++) {
+    char *p = csv_unquote(value[i], QTE, ESC);
+    if (!p) {
+      fprintf(stderr, "Internal error!");
+      abort();
+    }
+    row[i] = p;
+  }
+  ctx->result.push_back(std::move(row));
+  return 0;
+}
+
+TEST_CASE("csv1") {
   SUBCASE("open and shut") {
-    csv_t *csv =
-        csv_open((void *)1, '"', '"', '|',
-                 [](void *, int, const csv_value_t *, csv_t *) { return 0; });
-    CHECK(csv);
-    csv_close(csv);
+    context_t ctx{""};
+    CHECK(ctx.csv.ok);
   }
   SUBCASE("one row") {
-    struct context_t {
-      const char *raw = "abc\r\n";
-      const int len = strlen(raw);
-      int nrow = 0;
-    } context;
-    csv_t *csv =
-        csv_open((void *)&context, '"', '"', '|',
-                 [](void *ctx_, int nval, const csv_value_t *val, csv_t *) {
-                   context_t *ctx = (context_t *)ctx_;
-                   ctx->nrow++;
-                   CHECK(nval == 1);
-                   CHECK(val[0].len == 3);
-                   CHECK(0 == memcmp(val[0].ptr, "abc", 3));
-                   return 0;
-                 });
-    CHECK(csv);
-    int n = csv_feed(csv, context.raw, context.len, &status);
-    CHECK(n == context.len);
-    csv_close(csv);
-
-    CHECK(context.nrow == 1);
+    context_t ctx{"abc\r\n"};
+    CHECK(ctx.csv.ok);
+    csv_parse(&ctx.csv, (void *)&ctx, feed, perrow);
+    CHECK(ctx.csv.ok);
+    CHECK(ctx.result.size() == 1);
+    CHECK(ctx.result[0].size() == 1);
+    CHECK(ctx.result[0][0] == "abc");
   }
   SUBCASE("two rows") {
-    struct context_t {
-      const char *raw = "abc|def|ghi\r\njkl|mno|pqr\n";
-      const int len = strlen(raw);
-      int nrow = 0;
-    } context;
-    csv_t *csv =
-        csv_open((void *)&context, '"', '"', '|',
-                 [](void *ctx_, int nval, const csv_value_t *val, csv_t *) {
-                   context_t *ctx = (context_t *)ctx_;
-                   ctx->nrow++;
-                   CHECK(nval == 3);
-                   CHECK(val[0].len == 3);
-                   CHECK(val[1].len == 3);
-                   CHECK(val[2].len == 3);
-                   switch (ctx->nrow) {
-                   case 1:
-                     CHECK(0 == memcmp(val[0].ptr, "abc", 3));
-                     CHECK(0 == memcmp(val[1].ptr, "def", 3));
-                     CHECK(0 == memcmp(val[2].ptr, "ghi", 3));
-                     break;
-                   case 2:
-                     CHECK(0 == memcmp(val[0].ptr, "jkl", 3));
-                     CHECK(0 == memcmp(val[1].ptr, "mno", 3));
-                     CHECK(0 == memcmp(val[2].ptr, "pqr", 3));
-                     break;
-                   default:
-                     CHECK(0);
-                   }
-                   return 0;
-                 });
-    CHECK(csv);
-    int n = csv_feed(csv, context.raw, context.len, &status);
-    CHECK(n == context.len);
-    CHECK(status.rowno == 3);
-    CHECK(status.rowpos == n);
-    csv_close(csv);
-
-    CHECK(context.nrow == 2);
-  }
-  SUBCASE("2 rows with remainder") {
-    const char *raw = "abc|def|ghi\njkl|mno|pqr\nxxx";
-    int len = strlen(raw);
-    csv_t *csv =
-        csv_open((void *)1, '"', '"', '|',
-                 [](void *, int, const csv_value_t *, csv_t *) { return 0; });
-    CHECK(csv);
-
-    int n = csv_feed(csv, raw, len, &status);
-    CHECK(n == len - 3);
-    CHECK(status.rowno == 3);
-    CHECK(status.fldno == 1);
-    CHECK(status.fldpos == status.rowpos);
-
-    raw += n;
-    len -= n;
-    CHECK(len == 3);
-    n = csv_feed(csv, raw, len, &status);
-    CHECK(n == -1);
-    csv_close(csv);
+    context_t ctx{"abc|def|ghi\r\njkl|mno|pqr"};
+    CHECK(ctx.csv.ok);
+    csv_parse(&ctx.csv, (void *)&ctx, feed, perrow);
+    CHECK(ctx.csv.ok);
+    CHECK(ctx.result.size() == 2);
+    auto row1 = ctx.result[0];
+    auto row2 = ctx.result[1];
+    CHECK(row1.size() == 3);
+    CHECK(row1[0] == "abc");
+    CHECK(row1[1] == "def");
+    CHECK(row1[2] == "ghi");
+    CHECK(row2.size() == 3);
+    CHECK(row2[0] == "jkl");
+    CHECK(row2[1] == "mno");
+    CHECK(row2[2] == "pqr");
   }
 }

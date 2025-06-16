@@ -1,7 +1,7 @@
 #pragma once
 
 extern "C" {
-#include "../src/scan.h"
+#include "../src/csvc17.h"
 }
 
 #include <cstring>

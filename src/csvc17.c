@@ -204,7 +204,7 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
   int finbyte = (cb->buf.bot < cb->buf.top ? cb->buf.ptr[cb->buf.top - 1] : 0);
 
   // if at EOF and last byte is not \n, then: add a newline
-  if (cb->eof && finbyte != '\n') {
+  if (cb->eof && finbyte && finbyte != '\n') {
     cb->buf.ptr[cb->buf.top++] = '\n';
   }
   return 0;
@@ -240,13 +240,17 @@ static int onerow(scan_t *scan, csvx_t *cb) {
   const char *pp = 0;
   char ch; // char at *pp
 
+  if (scan->p == scan->q) {
+    return 0;
+  }
+
   cb->value.top = 0;
   cb->status.rowno++;
   cb->status.lineno++;
 
 STARTVAL:
   csv_value_t value = {0};
-  value.ptr = p;
+  value.ptr = (char *)p;
   goto UNQUOTED;
 
 UNQUOTED:
@@ -266,7 +270,10 @@ UNQUOTED:
     goto UNQUOTED; // esc in an unquoted field: ignore.
   }
   assert(ch == 0);
-  return RETERROR(cb, "%s", "unterminated row");
+  if (cb->eof) {
+    return RETERROR(cb, "%s", "unterminated row");
+  }
+  return 0;
 
 QUOTED:
   value.quoted = 1;
@@ -308,7 +315,10 @@ QUOTED:
   }
 
   if (!ch) {
-    return RETERROR(cb, "%s", "unterminated quote");
+    if (cb->eof) {
+      return RETERROR(cb, "%s", "unterminated quote");
+    }
+    return 0;
   }
 
   // still in quote
@@ -330,19 +340,17 @@ ENDVAL:
   goto STARTVAL;
 
 ENDROW:
-  // record the val
-  value.len = pp - p;
-  DO(ensure_value(cb));
-  cb->value.ptr[cb->value.top++] = value;
-
   // handle \r\n
+  value.len = pp - p;
   if (value.len && value.ptr[value.len - 1] == '\r') {
     value.len--;
   }
 
-  // eat the newline
-  scan->p++;
-  return 0;
+  // record the val
+  DO(ensure_value(cb));
+  cb->value.ptr[cb->value.top++] = value;
+
+  return 1;
 }
 
 csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
@@ -452,4 +460,69 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
 
   cb->fp = fp;
   return csv_parse(csv, context, read_file, perrow);
+}
+
+/*
+  e: escape
+  q: quote
+
+                  +--------- q ---------+
+                  |                     |
+                  v                     |
+[STARTVAL] ----> [UNQUOTED] --- q ---> [QUOTED] ----------+
+                                           ^              |
+                                           |              |
+                                           +-- eq or ee --+
+*/
+/**
+ *  Unquote a value and return a NUL-terminated string.
+ */
+CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
+  char *p = value.ptr;
+  char *q = p + value.len;
+  *q = 0;
+
+  // if value is not quoted, just return it.
+  if (!value.quoted) {
+    return p;
+  }
+
+  // fast path for "xxxx", where x != esc
+  if (p[0] == qte && q[-1] == qte) {
+    if (!memchr(p + 1, esc, q - p - 2)) {
+      q[-1] = 0;
+      return p + 1;
+    }
+  }
+
+  char *begin = p;
+UNQUOTED:
+  if (p == q) {
+    goto DONE;
+  }
+  if (*p != qte) {
+    goto UNQUOTED;
+  }
+  // shift down
+  memmove(p, p + 1, q - p);
+  q--;
+QUOTED:
+  assert(p < q);
+  if (p + 1 < q && p[0] == esc && (p[1] == esc || p[1] == qte)) {
+    // shift down
+    memmove(p, p + 1, q - p);
+    q--;
+    p++;
+    goto QUOTED;
+  }
+  if (*p == qte) {
+    memmove(p, p + 1, q - p);
+    q--;
+    goto UNQUOTED;
+  }
+  goto QUOTED;
+
+DONE:
+  *p = 0;
+  return begin;
 }

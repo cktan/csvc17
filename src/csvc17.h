@@ -23,33 +23,37 @@ struct csv_t {
 
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
-  const char *ptr;
+  char *ptr;
   int len;
   bool quoted;
 };
 
 /**
  *  This is a callback that is invoked when the parser needs data.
- *  Return #bytes copied into buf on success, 0 on EOF, -1 on error.
+ *  Return #bytes copied into buf on success, 0 on EOF, -1 on error. If
+ *  you return -1, be sure to write an error message into errbuf[].
  */
 typedef int csv_feed_t(void *context, char *buf, int bufsz, char *errbuf,
                        int errsz);
 
 /**
- *  This is a callback that is invoked per row.
- *  Return 0 on success, -1 otherwise.
+ *  This is a callback that is invoked per row.  Return 0 on success,
+ *  -1 otherwise. If you return -1, be sure to write an error message
+ *  into errbuf[] using lineno and rowno.
+ *
+ *  For each csv_value, call csv_unquote() to obtain a NUL-terminated string.
  */
-typedef int csv_perrow_t(void *context, int n, const csv_value_t value[],
+typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
                          int64_t lineno, int64_t rowno, char *errbuf,
                          int errsz);
 
 /**
- *  Open a scan. The csv_t handle returned must be freed using csv_close() after
- * use.
+ *  Open a scan. The csv_t handle returned must be freed using
+ *  csv_close() after use.
  *
  *  Note: this is a 3-part open(), parse(), close() interface to cater to C++
- * exceptions (or longjmp) being thrown from inside the callback routines during
- * parse() operation.
+ *  exceptions (or longjmp) being thrown inside the callback routines during
+ *  parse() operation.
  */
 CSV_EXTERN csv_t csv_open(int qte, int esc, int delim);
 
@@ -73,8 +77,8 @@ CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
 CSV_EXTERN void csv_close(csv_t *csv);
 
 /**
- *  Unquote a string
+ *  Unquote a value and return a NUL-terminated string.
  */
-CSV_EXTERN int csv_unquote(char *buf, int bufsz, int qte);
+CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc);
 
 #endif

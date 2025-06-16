@@ -1,7 +1,7 @@
 #pragma once
 
 extern "C" {
-#include "../src/csv.h"
+#include "../src/csvc17.h"
 }
 
 #include <cstring>
