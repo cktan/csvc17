@@ -27,12 +27,12 @@ const char *usagestr = "\n\
 ";
 
 #include "../src/csvc17.h"
+#include <assert.h>
 #include <ctype.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 // params
 int QTE = '"';
@@ -50,7 +50,6 @@ static void usage(int exitcode, const char *msg) {
   fprintf(stderr, "%s\n", msg);
   exit(exitcode);
 }
-
 
 static void parse_cmdline(int argc, char **argv) {
   pname = argv[0];
@@ -119,7 +118,7 @@ static void parse_cmdline(int argc, char **argv) {
 }
 
 static int special(const char *ptr) {
-  for ( ; *ptr; ptr++) {
+  for (; *ptr; ptr++) {
     if (!isprint(*ptr) || *ptr == '\'') {
       return 1;
     }
@@ -127,10 +126,8 @@ static int special(const char *ptr) {
   return 0;
 }
 
-
-static int perrow(void *context, int n, csv_value_t value[],
-		  int64_t lineno, int64_t rowno, char *errbuf,
-		  int errsz) {
+static int perrow(void *context, int n, csv_value_t value[], int64_t lineno,
+                  int64_t rowno, char *errbuf, int errsz) {
   (void)context;
   (void)lineno;
   (void)rowno;
@@ -138,13 +135,13 @@ static int perrow(void *context, int n, csv_value_t value[],
   (void)errsz;
   printf("    [");
   for (int i = 0; i < n; i++) {
-    const char* ptr = csv_unquote(value[i], QTE, ESC);
+    const char *ptr = csv_unquote(value[i], QTE, ESC);
     assert(ptr);
-    
+
     if (i) {
       printf(", ");
     }
-    
+
     if (!value[i].quoted) {
       if (0 == strcmp(NULLSTR, ptr)) {
         printf("None");
@@ -167,7 +164,7 @@ static int perrow(void *context, int n, csv_value_t value[],
 int main(int argc, char *argv[]) {
 
   parse_cmdline(argc, argv);
-  FILE* fp = stdin;
+  FILE *fp = stdin;
   if (PATH) {
     fp = fopen(PATH, "r");
     if (!fp) {

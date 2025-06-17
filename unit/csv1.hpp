@@ -8,7 +8,6 @@ extern "C" {
 
 using namespace std;
 
-
 struct context_t {
   const char QTE = '"';
   const char ESC = '"';

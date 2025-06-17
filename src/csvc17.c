@@ -495,7 +495,7 @@ CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
   }
 
   char *begin = p;
-  char* pp;
+  char *pp;
 UNQUOTED:
   if (p == q) {
     goto DONE;

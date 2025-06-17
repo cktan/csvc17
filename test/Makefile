@@ -10,6 +10,7 @@ endif
 all: $(EXEC)
 
 test: all
+	bash run.sh
 
 csv2py: csv2py.c ../src/libcsvc17.a
 	$(CC) $(CFLAGS) -o $@ $@.c -L../src -lcsvc17

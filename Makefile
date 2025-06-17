@@ -3,12 +3,13 @@
 prefix ?= /usr/local
 # remove trailing /
 override prefix := $(prefix:%/=%)
-DIRS = src unit
+DIRS = src unit test
 
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)
 FORMATDIRS = $(DIRS:%=format-%)
 TESTDIRS = $(DIRS:%=test-%)
+
 
 ###################################
 
@@ -45,7 +46,6 @@ test: $(TESTDIRS)
 format: $(FORMATDIRS)
 
 clean: $(CLEANDIRS)
-	rm -f $(VERSION)
 
 $(TESTDIRS):
 	$(MAKE) -C $(@:test-%=%) test

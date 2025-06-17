@@ -6,7 +6,7 @@
 
 using namespace std;
 
-static char* unquote(std::string s, bool quoted = true) {
+static char *unquote(std::string s, bool quoted = true) {
   const int QTE = '"';
   const int ESC = '"';
   csv_value_t value;
@@ -16,13 +16,11 @@ static char* unquote(std::string s, bool quoted = true) {
   return csv_unquote(value, QTE, ESC);
 }
 
-
 TEST_CASE("unquote1") {
 
   // quote: "
   // escape: "
   // delim: |
-  
 
   SUBCASE("nop") {
     {
@@ -48,27 +46,27 @@ TEST_CASE("unquote1") {
 
     {
       string raw = "\"a\"";
-      string v= unquote(raw);
+      string v = unquote(raw);
       CHECK(v == "a");
     }
 
     {
       string raw = "\"\"";
-      string v= unquote(raw);
+      string v = unquote(raw);
       CHECK(v == "");
     }
   }
-  
+
   SUBCASE("complex") {
     {
       string raw = "\"abcd\"\"efg\"";
       // input: "abcd""efg".  output: abcd"efg
       string v = unquote(raw);
-      CHECK(v  == "abcd\"efg");
+      CHECK(v == "abcd\"efg");
     }
 
     {
-      string raw = "\"w\"\"x\"\"\"";    // "w""x"""
+      string raw = "\"w\"\"x\"\"\""; // "w""x"""
       string v = unquote(raw);
       CHECK(v == "w\"x\"");
     }
@@ -77,7 +75,7 @@ TEST_CASE("unquote1") {
   SUBCASE("multiline") {
     {
       string raw = "\"abcd\n\n\n\n\nefg\"";
-      string v  = unquote(raw);
+      string v = unquote(raw);
       CHECK(v == "abcd\n\n\n\n\nefg");
     }
   }
