@@ -37,11 +37,11 @@ struct scan_t {
 
 typedef struct csvx_t csvx_t;
 struct csvx_t {
-  ebuf_t ebuf;         // error buffer
-  int qte, esc, delim; // special chars
-  bool eof;            // true if feed() signaled EOF
+  ebuf_t ebuf; // error buffer
+  bool eof;    // true if feed() signaled EOF
 
   status_t status;
+  csv_config_t conf;
 
   struct {
     char *ptr; // buf of size max where [bot..top) is valid
@@ -58,9 +58,9 @@ struct csvx_t {
 
 static scan_t scan_reset(const csvx_t *cb) {
   scan_t scan = {0};
-  scan.qte = cb->qte;
-  scan.esc = cb->esc;
-  scan.delim = cb->delim;
+  scan.qte = cb->conf.qte;
+  scan.esc = cb->conf.esc;
+  scan.delim = cb->conf.delim;
   scan.p = cb->buf.ptr + cb->buf.bot;
   scan.q = cb->buf.ptr + cb->buf.top;
   return scan;
@@ -162,8 +162,14 @@ static int ensure_buf(csvx_t *cb) {
 #else
   max = max + 128;
 #endif
-  if (max < 0) {
-    return RETERROR(cb, "%s", "buffer overflow");
+  if (max > cb->conf.maxrowsz * 2) {
+    max = cb->conf.maxrowsz * 2;
+    if (max == cb->buf.max) {
+      return RETERROR(cb, "maxrowsize %" PRId64 " breached", cb->conf.maxrowsz);
+    }
+  }
+  if (max <= 0) {
+    return RETERROR(cb, "%s", "integer overflow while extending buffer");
   }
 
   // 16-byte aligned for SIMD
@@ -231,9 +237,9 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
 // Scan one row. Return #rows scanned, or -1 on error.
 // This call will corrupt cb->status on error.
 static int onerow(scan_t *scan, csvx_t *cb) {
-  const char esc = cb->esc;
-  const char qte = cb->qte;
-  const char delim = cb->delim;
+  const char esc = cb->conf.esc;
+  const char qte = cb->conf.qte;
+  const char delim = cb->conf.delim;
 
   // p points to start of value; pp points to the current special char
   const char *p = scan->p;
@@ -411,7 +417,7 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   return csv;
 }
 
-csv_t csv_open(int qte, int esc, int delim) {
+csv_t csv_open(csv_config_t conf) {
   csv_t ret = {0};
   csvx_t *cb = calloc(1, sizeof(*cb));
   if (!cb) {
@@ -420,10 +426,7 @@ csv_t csv_open(int qte, int esc, int delim) {
   }
   ret.__internal = cb;
 
-  cb->qte = qte;
-  cb->esc = esc;
-  cb->delim = delim;
-
+  cb->conf = conf;
   ret.ok = true;
   return ret;
 }
@@ -530,4 +533,13 @@ QUOTED:
 DONE:
   *p = 0;
   return begin;
+}
+
+csv_config_t csv_default_config(void) {
+  csv_config_t conf = {0};
+  conf.qte = '"';
+  conf.esc = '"';
+  conf.delim = ',';
+  conf.maxrowsz = 1024 * 1024 * 1024;
+  return conf;
 }

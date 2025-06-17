@@ -173,7 +173,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  csv_t csv = csv_open(QTE, ESC, DELIM);
+  csv_config_t conf = csv_default_config();
+  conf.qte = QTE;
+  conf.esc = ESC;
+  conf.delim = DELIM;
+  csv_t csv = csv_open(conf);
   if (!csv.ok) {
     fprintf(stderr, "ERROR: %s\n", csv.errmsg);
     exit(1);

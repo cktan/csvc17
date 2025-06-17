@@ -14,6 +14,14 @@
 #define CSV_EXTERN extern
 #endif
 
+typedef struct csv_config_t csv_config_t;
+struct csv_config_t {
+  int qte;          /* default double-quote */
+  int esc;          /* default double-quote */
+  int delim;        /* default comma */
+  int64_t maxrowsz; /* default 1GB */
+};
+
 typedef struct csv_t csv_t;
 struct csv_t {
   bool ok;
@@ -55,7 +63,7 @@ typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
  *  exceptions (or longjmp) being thrown inside the callback routines during
  *  parse() operation.
  */
-CSV_EXTERN csv_t csv_open(int qte, int esc, int delim);
+CSV_EXTERN csv_t csv_open(csv_config_t config);
 
 /**
  *  Run the scan and invoke callbacks on demand. Always returns the csv param.
@@ -80,5 +88,11 @@ CSV_EXTERN void csv_close(csv_t *csv);
  *  Unquote a value and return a NUL-terminated string.
  */
 CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc);
+
+/**
+ *  Get the default config. Set values if default is not correct, and
+ *  pass to csv_open().
+ */
+CSV_EXTERN csv_config_t csv_default_config(void);
 
 #endif

@@ -15,7 +15,13 @@ struct context_t {
   csv_t csv;
   const char *doc;
   std::vector<std::vector<std::string>> result;
-  context_t(const char *doc_) : doc(doc_) { csv = csv_open(QTE, ESC, DELIM); }
+  context_t(const char *doc_) : doc(doc_) {
+    auto conf = csv_default_config();
+    conf.qte = QTE;
+    conf.esc = ESC;
+    conf.delim = DELIM;
+    csv = csv_open(conf);
+  }
   ~context_t() { csv_close(&csv); }
   context_t(context_t &) = delete;
   context_t &operator=(context_t &) = delete;
