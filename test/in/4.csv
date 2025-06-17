@@ -1,0 +1,101 @@
+OrderID,CustomerID,Product,Quantity,UnitPrice,OrderDate,ShippingCountry,PaymentMethod,DiscountApplied,IsReturned
+1001,CUST001,Wireless Headphones,1,89.99,2023-01-05,United States,Credit Card,0.1,No
+1002,CUST002,Smartphone Case,2,19.99,2023-01-07,Canada,PayPal,0,No
+1003,CUST003,Bluetooth Speaker,1,45.50,2023-01-08,United Kingdom,Debit Card,0.05,Yes
+1004,CUST004,USB-C Cable,5,9.99,2023-01-10,Australia,Credit Card,0,No
+1005,CUST005,Wireless Mouse,1,24.99,2023-01-12,Germany,PayPal,0.15,No
+1006,CUST006,Laptop Stand,1,35.00,2023-01-14,France,Debit Card,0,No
+1007,CUST007,External Hard Drive,1,120.00,2023-01-15,Japan,Credit Card,0.1,No
+1008,CUST008,Keyboard,1,75.50,2023-01-17,Spain,PayPal,0,Yes
+1009,CUST009,Monitor,1,199.99,2023-01-18,Italy,Debit Card,0.2,No
+1010,CUST010,Webcam,1,59.99,2023-01-20,Brazil,Credit Card,0,No
+1011,CUST011,Desk Lamp,2,29.99,2023-01-22,Mexico,PayPal,0.05,No
+1012,CUST012,Notebook,10,4.99,2023-01-24,Netherlands,Debit Card,0,No
+1013,CUST013,Pen Set,3,12.50,2023-01-25,Sweden,Credit Card,0.1,No
+1014,CUST014,Backpack,1,49.99,2023-01-27,South Korea,PayPal,0,Yes
+1015,CUST015,Water Bottle,1,15.00,2023-01-29,India,Debit Card,0.15,No
+1016,CUST016,Smart Watch,1,159.99,2023-01-31,China,Credit Card,0,No
+1017,CUST017,Earbuds,1,79.99,2023-02-02,Russia,PayPal,0.1,No
+1018,CUST018,Power Bank,2,35.50,2023-02-04,Turkey,Debit Card,0,No
+1019,CUST019,HDMI Cable,3,14.99,2023-02-06,Poland,Credit Card,0.05,No
+1020,CUST020,Tablet,1,249.99,2023-02-08,Belgium,PayPal,0.2,Yes
+1021,CUST021,Phone Charger,2,18.99,2023-02-10,Switzerland,Debit Card,0,No
+1022,CUST022,Wireless Keyboard,1,65.00,2023-02-12,Austria,Credit Card,0.1,No
+1023,CUST023,Mouse Pad,1,9.99,2023-02-14,Norway,PayPal,0,No
+1024,CUST024,USB Flash Drive,4,12.99,2023-02-16,Denmark,Debit Card,0.15,No
+1025,CUST025,Monitor Stand,1,45.00,2023-02-18,Finland,Credit Card,0,Yes
+1026,CUST026,Headphone Stand,1,19.99,2023-02-20,Portugal,PayPal,0.05,No
+1027,CUST027,Camera,1,399.99,2023-02-22,Ireland,Debit Card,0.1,No
+1028,CUST028,Tripod,1,59.50,2023-02-24,Greece,Credit Card,0,No
+1029,CUST029,Microphone,1,89.99,2023-02-26,Czech Republic,PayPal,0.2,No
+1030,CUST030,SD Card,2,24.99,2023-02-28,Hungary,Debit Card,0,Yes
+1031,CUST031,Laptop Sleeve,1,29.99,2023-03-02,Israel,Credit Card,0.1,No
+1032,CUST032,Screen Cleaner,1,7.99,2023-03-04,South Africa,PayPal,0,No
+1033,CUST033,USB Hub,1,22.50,2023-03-06,Egypt,Debit Card,0.05,No
+1034,CUST034,Smart Bulb,3,19.99,2023-03-08,Thailand,Credit Card,0,Yes
+1035,CUST035,Router,1,79.99,2023-03-10,Vietnam,PayPal,0.15,No
+1036,CUST036,Ethernet Cable,2,12.99,2023-03-12,Malaysia,Debit Card,0,No
+1037,CUST037,Graphics Tablet,1,129.99,2023-03-14,Singapore,Credit Card,0.1,No
+1038,CUST038,Smart Plug,1,24.99,2023-03-16,Philippines,PayPal,0,No
+1039,CUST039,Fitness Tracker,1,69.99,2023-03-18,Indonesia,Debit Card,0.2,No
+1040,CUST040,VR Headset,1,199.99,2023-03-20,Argentina,Credit Card,0,Yes
+1041,CUST041,Wireless Earbuds,1,89.99,2023-03-22,Chile,PayPal,0.1,No
+1042,CUST042,Portable Monitor,1,179.50,2023-03-24,Colombia,Debit Card,0,No
+1043,CUST043,Keyboard Cleaner,1,14.99,2023-03-26,Peru,Credit Card,0.05,No
+1044,CUST044,Laptop Cooling Pad,1,34.99,2023-03-28,Venezuela,PayPal,0,Yes
+1045,CUST045,Noise Cancelling Headphones,1,149.99,2023-03-30,Pakistan,Debit Card,0.15,No
+1046,CUST046,USB-C Adapter,1,19.99,2023-04-01,Bangladesh,Credit Card,0,No
+1047,CUST047,Wireless Presenter,1,29.50,2023-04-03,Nigeria,PayPal,0.1,No
+1048,CUST048,External SSD,1,129.99,2023-04-05,Kenya,Debit Card,0,No
+1049,CUST049,Desk Organizer,1,22.99,2023-04-07,Morocco,Credit Card,0.2,No
+1050,CUST050,Smart Scale,1,39.99,2023-04-09,Ukraine,PayPal,0,Yes
+1051,CUST051,Phone Stand,1,12.99,2023-04-11,Romania,Debit Card,0.1,No
+1052,CUST052,Bluetooth Transmitter,1,34.99,2023-04-13,Serbia,Credit Card,0,No
+1053,CUST053,Cable Organizer,2,8.50,2023-04-15,Croatia,PayPal,0.05,No
+1054,CUST054,Reading Light,1,17.99,2023-04-17,Slovakia,Debit Card,0,Yes
+1055,CUST055,Wireless Charger,1,29.99,2023-04-19,Bulgaria,Credit Card,0.15,No
+1056,CUST056,Smart Doorbell,1,99.99,2023-04-21,Lithuania,PayPal,0,No
+1057,CUST057,Air Purifier,1,149.50,2023-04-23,Slovenia,Debit Card,0.1,No
+1058,CUST058,Robot Vacuum,1,199.99,2023-04-25,Latvia,Credit Card,0,No
+1059,CUST059,Smart Thermostat,1,129.99,2023-04-27,Estonia,PayPal,0.2,No
+1060,CUST060,Docking Station,1,89.99,2023-04-29,Iceland,Debit Card,0,Yes
+1061,CUST061,Wireless Keyboard and Mouse Combo,1,79.99,2023-05-01,Albania,Credit Card,0.1,No
+1062,CUST062,Portable Speaker,1,54.99,2023-05-03,Macedonia,PayPal,0,No
+1063,CUST063,Gaming Mouse,1,49.50,2023-05-05,Bosnia,Debit Card,0.05,No
+1064,CUST064,Laptop Bag,1,59.99,2023-05-07,Moldova,Credit Card,0,Yes
+1065,CUST065,Smart Light Strip,1,39.99,2023-05-09,Montenegro,PayPal,0.15,No
+1066,CUST066,Webcam Cover,5,2.99,2023-05-11,Belarus,Debit Card,0,No
+1067,CUST067,Phone Grip,1,7.99,2023-05-13,Armenia,Credit Card,0.1,No
+1068,CUST068,Car Phone Holder,1,14.99,2023-05-15,Georgia,PayPal,0,No
+1069,CUST069,Wireless Gaming Headset,1,109.99,2023-05-17,Azerbaijan,Debit Card,0.2,No
+1070,CUST070,Smart Display,1,149.99,2023-05-19,Kazakhstan,Credit Card,0,Yes
+1071,CUST071,USB Microphone,1,69.99,2023-05-21,Uzbekistan,PayPal,0.1,No
+1072,CUST072,Phone Lens Kit,1,29.50,2023-05-23,Turkmenistan,Debit Card,0,No
+1073,CUST073,Screen Protector,3,9.99,2023-05-25,Kyrgyzstan,Credit Card,0.05,No
+1074,CUST074,Smart Lock,1,119.99,2023-05-27,Tajikistan,PayPal,0,Yes
+1075,CUST075,Digital Picture Frame,1,89.99,2023-05-29,Afghanistan,Debit Card,0.15,No
+1076,CUST076,Wireless Barcode Scanner,1,199.99,2023-05-31,Iraq,Credit Card,0,No
+1077,CUST077,Label Printer,1,149.50,2023-06-02,Syria,PayPal,0.1,No
+1078,CUST078,Document Scanner,1,129.99,2023-06-04,Lebanon,Debit Card,0,No
+1079,CUST079,3D Printer,1,299.99,2023-06-06,Jordan,Credit Card,0.2,No
+1080,CUST080,VPN Router,1,89.99,2023-06-08,Saudi Arabia,PayPal,0,Yes
+1081,CUST081,Wireless Security Camera,1,79.99,2023-06-10,United Arab Emirates,Debit Card,0.1,No
+1082,CUST082,Smart Mirror,1,249.99,2023-06-12,Qatar,Credit Card,0,No
+1083,CUST083,Digital Notepad,1,129.50,2023-06-14,Kuwait,PayPal,0.05,No
+1084,CUST084,Portable Projector,1,179.99,2023-06-16,Bahrain,Debit Card,0,Yes
+1085,CUST085,Noise Cancelling Earbuds,1,119.99,2023-06-18,Oman,Credit Card,0.15,No
+1086,CUST086,Smart Ring,1,99.99,2023-06-20,Yemen,PayPal,0,No
+1087,CUST087,Wireless Meat Thermometer,1,49.99,2023-06-22,Palestine,Debit Card,0.1,No
+1088,CUST088,Smart Juicer,1,199.99,2023-06-24,Libya,Credit Card,0,No
+1089,CUST089,Robot Mop,1,159.99,2023-06-26,Tunisia,PayPal,0.2,No
+1090,CUST090,Smart Garden,1,89.99,2023-06-28,Algeria,Debit Card,0,Yes
+1091,CUST091,Air Fryer,1,129.99,2023-06-30,Senegal,Credit Card,0.1,No
+1092,CUST092,Smart Blender,1,79.50,2023-07-02,Ghana,PayPal,0,No
+1093,CUST093,Coffee Maker,1,59.99,2023-07-04,Ethiopia,Debit Card,0.05,No
+1094,CUST094,Food Processor,1,89.99,2023-07-06,Angola,Credit Card,0,Yes
+1095,CUST095,Slow Cooker,1,49.99,2023-07-08,Uganda,PayPal,0.15,No
+1096,CUST096,Stand Mixer,1,149.99,2023-07-10,Tanzania,Debit Card,0,No
+1097,CUST097,Toaster Oven,1,69.99,2023-07-12,Zambia,Credit Card,0.1,No
+1098,CUST098,Pressure Cooker,1,99.99,2023-07-14,Zimbabwe,PayPal,0,No
+1099,CUST099,Rice Cooker,1,59.99,2023-07-16,Madagascar,Debit Card,0.2,No
+1100,CUST100,Smart Kettle,1,39.99,2023-07-18,Mozambique,Credit Card,0,Yes
