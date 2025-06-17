@@ -136,7 +136,7 @@ static int perrow(void *context, int n, csv_value_t value[],
   (void)rowno;
   (void)errbuf;
   (void)errsz;
-  printf("[");
+  printf("    [");
   for (int i = 0; i < n; i++) {
     const char* ptr = csv_unquote(value[i], QTE, ESC);
     assert(ptr);
@@ -149,15 +149,15 @@ static int perrow(void *context, int n, csv_value_t value[],
       if (0 == strcmp(NULLSTR, ptr)) {
         printf("None");
       } else {
-        printf("'%s'", ptr);
+        printf("r'%s'", ptr);
       }
       continue;
     }
 
     if (special(ptr)) {
-      printf("'''%s'''", ptr);
+      printf("r'''%s'''", ptr);
     } else {
-      printf("'%s'", ptr);
+      printf("r'%s'", ptr);
     }
   }
   printf("],\n");

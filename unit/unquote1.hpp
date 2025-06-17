@@ -1,67 +1,84 @@
 #pragma once
 
-extern "C" {
 #include "../src/csvc17.h"
-}
 
 #include <cstring>
 
 using namespace std;
+
+static char* unquote(std::string s, bool quoted = true) {
+  const int QTE = '"';
+  const int ESC = '"';
+  csv_value_t value;
+  value.ptr = s.data();
+  value.len = s.length();
+  value.quoted = quoted;
+  return csv_unquote(value, QTE, ESC);
+}
+
 
 TEST_CASE("unquote1") {
 
   // quote: "
   // escape: "
   // delim: |
-
-  csv_t *csv =
-      csv_open((void *)1, '"', '"', '|',
-               [](void *, int, const csv_value_t *, csv_t *) { return 0; });
+  
 
   SUBCASE("nop") {
-    string raw = "an unquoted string";
-    char *val;
-    int vlen;
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(val == raw.data());
-    CHECK(vlen == raw.length());
+    {
+      string raw = "an unquoted string";
+      string v = unquote(raw, false);
+      CHECK(v == raw);
+    }
 
-    raw = "";
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(val == raw.data());
-    CHECK(vlen == raw.length());
+    {
+      string raw = "";
+      string v = unquote(raw, false);
+      CHECK(v == raw);
+    }
   }
 
   SUBCASE("simple") {
     // this just return the string without the quotes
-    string raw = "\"hello there\"";
-    char *val;
-    int vlen;
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(val == raw.data() + 1);
-    CHECK(vlen == raw.length() - 2);
+    {
+      string raw = "\"hello there\"";
+      string v = unquote(raw);
+      CHECK(v == "hello there");
+    }
 
-    raw = "\"a\"";
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(val == raw.data() + 1);
-    CHECK(vlen == raw.length() - 2);
+    {
+      string raw = "\"a\"";
+      string v= unquote(raw);
+      CHECK(v == "a");
+    }
 
-    raw = "\"\"";
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(val == raw.data() + 1);
-    CHECK(vlen == raw.length() - 2);
+    {
+      string raw = "\"\"";
+      string v= unquote(raw);
+      CHECK(v == "");
+    }
   }
-
+  
   SUBCASE("complex") {
-    string expected = "abcd\"efg";
-    string raw = "\"abcd\"\"efg\"";
-    // input: "abcd""efg".  output: abcd"efg
-    char *val;
-    int vlen;
-    CHECK(0 == csv_unquote(csv, raw.data(), raw.length(), &val, &vlen));
-    CHECK(vlen == expected.length());
-    CHECK(0 == memcmp(expected.data(), val, vlen));
+    {
+      string raw = "\"abcd\"\"efg\"";
+      // input: "abcd""efg".  output: abcd"efg
+      string v = unquote(raw);
+      CHECK(v  == "abcd\"efg");
+    }
+
+    {
+      string raw = "\"w\"\"x\"\"\"";    // "w""x"""
+      string v = unquote(raw);
+      CHECK(v == "w\"x\"");
+    }
   }
 
-  csv_close(csv);
+  SUBCASE("multiline") {
+    {
+      string raw = "\"abcd\n\n\n\n\nefg\"";
+      string v  = unquote(raw);
+      CHECK(v == "abcd\n\n\n\n\nefg");
+    }
+  }
 }

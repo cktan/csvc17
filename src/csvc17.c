@@ -495,14 +495,19 @@ CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
   }
 
   char *begin = p;
+  char* pp;
 UNQUOTED:
   if (p == q) {
     goto DONE;
   }
-  if (*p != qte) {
-    goto UNQUOTED;
+  pp = memchr(p, qte, q - p);
+  if (!pp) {
+    p = q;
+    goto DONE;
   }
-  // shift down
+  // here: *pp == qte
+  // shift down, and go into QUOTED mode
+  p = pp;
   memmove(p, p + 1, q - p);
   q--;
 QUOTED:
@@ -519,6 +524,7 @@ QUOTED:
     q--;
     goto UNQUOTED;
   }
+  p++;
   goto QUOTED;
 
 DONE:

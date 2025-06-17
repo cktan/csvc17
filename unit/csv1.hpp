@@ -8,11 +8,11 @@ extern "C" {
 
 using namespace std;
 
-const char QTE = '"';
-const char ESC = '"';
-const char DELIM = '|';
 
 struct context_t {
+  const char QTE = '"';
+  const char ESC = '"';
+  const char DELIM = '|';
   csv_t csv;
   const char *doc;
   std::vector<std::vector<std::string>> result;
@@ -47,7 +47,7 @@ static int perrow(void *ctx_, int n, csv_value_t value[], int64_t lineno,
   std::vector<std::string> row;
   row.resize(n);
   for (int i = 0; i < n; i++) {
-    char *p = csv_unquote(value[i], QTE, ESC);
+    char *p = csv_unquote(value[i], ctx->QTE, ctx->ESC);
     if (!p) {
       fprintf(stderr, "Internal error!");
       abort();
