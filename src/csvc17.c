@@ -30,7 +30,7 @@ struct status_t {
 
 typedef struct scan_t scan_t;
 struct scan_t {
-  char *p;
+  char *_p;
   char *q;
   int qte, esc, delim; // special chars
 };
@@ -61,7 +61,7 @@ static scan_t scan_reset(const csvx_t *cb) {
   scan.qte = cb->conf.qte;
   scan.esc = cb->conf.esc;
   scan.delim = cb->conf.delim;
-  scan.p = cb->buf.ptr + cb->buf.bot;
+  scan._p = cb->buf.ptr + cb->buf.bot;
   scan.q = cb->buf.ptr + cb->buf.top;
   return scan;
 }
@@ -71,19 +71,20 @@ static inline bool finished(const csvx_t *cb) {
   return cb->eof && (cb->buf.bot == cb->buf.top);
 }
 
-/* get ptr to the next special char */
+// Get ptr to the next special char. After this call, p points
+// to the char after the special char.
 static char *scan_next(scan_t *sc) {
-  for (; sc->p < sc->q; sc->p++) {
-    int ch = *sc->p;
+  for (; sc->_p < sc->q; sc->_p++) {
+    int ch = *sc->_p;
     if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
-      return sc->p++;
+      return sc->_p++;
     }
   }
   return NULL;
 }
 
 /* get ptr to the current char */
-static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
+static char *scan_peek(scan_t *sc) { return (sc->_p < sc->q) ? sc->_p : NULL; }
 
 static int read_file(void *context, char *buf, int bufsz, char *errmsg,
                      int errsz) {
@@ -242,13 +243,9 @@ static int onerow(scan_t *scan, csvx_t *cb) {
   const char delim = cb->conf.delim;
 
   // p points to start of value; pp points to the current special char
-  const char *p = scan->p;
+  const char *p = 0;
   const char *pp = 0;
   char ch; // char at *pp
-
-  if (scan->p == scan->q) {
-    return 0;
-  }
 
   cb->value.top = 0;
   cb->status.rowno++;
@@ -256,7 +253,10 @@ static int onerow(scan_t *scan, csvx_t *cb) {
 
 STARTVAL:
   csv_value_t value = {0};
-  value.ptr = (char *)p;
+  p = value.ptr = scan_peek(scan);
+  if (!p) {
+    return 0;
+  }
   goto UNQUOTED;
 
 UNQUOTED:
@@ -384,12 +384,12 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
 
     // set up a scan of the cb->buf[]
     scan_t scan = scan_reset(cb);
-    assert(scan.p <= scan.q);
+    assert(scan._p <= scan.q);
 
     // Scan row by row
     for (;;) {
       status_t saved_status = cb->status;
-      char *saved_p = scan.p;
+      char *saved_p = scan._p;
       N = onerow(&scan, cb);
       if (N < 0) {
         assert(csv->errmsg[0]);
@@ -401,7 +401,7 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
         break;
       }
       assert(N == 1);
-      cb->buf.bot += scan.p - saved_p;
+      cb->buf.bot += scan._p - saved_p;
 
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,
                  cb->status.rowno, cb->ebuf.ptr, cb->ebuf.len)) {
