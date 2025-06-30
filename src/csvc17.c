@@ -49,11 +49,11 @@ struct csvx_t {
   } buf;
 
   struct {
-    csv_value_t *ptr;
+    csv_value_t *ptr; // value[0..top) are valid
     int top, max;
   } value;
 
-  FILE *fp; // file ptr if any
+  FILE *fp; // file ptr if not NULL
 };
 
 static scan_t scan_reset(const csvx_t *cb) {
@@ -157,20 +157,15 @@ static int ensure_buf(csvx_t *cb) {
   }
 
   // grow buf[]
-  int max = cb->buf.max;
-#ifndef NDEBUG
-  max = max * 1.5 + 2048;
-#else
-  max = max + 128;
-#endif
-  if (max > cb->conf.maxrowsz * 2) {
-    max = cb->conf.maxrowsz * 2;
-    if (max == cb->buf.max) {
-      return RETERROR(cb, "maxrowsize %" PRId64 " breached", cb->conf.maxrowsz);
-    }
+  if (cb->buf.max == cb->conf.maxbufsz) {
+    return RETERROR(cb, "%s",
+                    "max row size is larger than maxbufsz of %d bytes",
+                    cb->conf.maxbufsz);
   }
-  if (max <= 0) {
-    return RETERROR(cb, "%s", "integer overflow while extending buffer");
+  int64_t max = cb->buf.max;
+  max = (0 == max ? cb->conf.initbufsz : max * 1.5);
+  if (max > cb->conf.maxbufsz) {
+    max = cb->conf.maxbufsz;
   }
 
   // 16-byte aligned for SIMD
@@ -372,48 +367,59 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
+  // keep scanning until EOF
   while (!finished(cb)) {
     int N;
     if (!cb->eof) {
+      // Get more data from source
       if (fill_buf(cb, context, feed)) {
-        assert(csv->errmsg[0]);
-        return csv;
+        goto bail;
       }
       assert(cb->buf.bot <= cb->buf.top);
     }
 
-    // set up a scan of the cb->buf[]
+    // Set up a scan of the cb->buf[]
     scan_t scan = scan_reset(cb);
     assert(scan._p <= scan.q);
 
-    // Scan row by row
+    // Scan buf[] row by row
     for (;;) {
       status_t saved_status = cb->status;
       char *saved_p = scan._p;
+
+      // Get one row
       N = onerow(&scan, cb);
       if (N < 0) {
-        assert(csv->errmsg[0]);
-        return csv;
+        goto bail;
       }
       if (N == 0) {
-        // data in cb->buf[] is not enough to fill one row
+        // Insufficient data in cb->buf[] to fill one row
         cb->status = saved_status; // rollback the status
         break;
       }
       assert(N == 1);
+
+      // Advance the buffer
       cb->buf.bot += scan._p - saved_p;
 
+      // Invoke the callback to process the current row
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,
                  cb->status.rowno, cb->ebuf.ptr, cb->ebuf.len)) {
+        // Make up an error message if user did not supply one
         if (!cb->ebuf.ptr[0]) {
           RETERROR(cb, "%s", "perrow callback failed");
         }
-        return csv;
+        goto bail;
       }
     }
   }
 
   csv->ok = true;
+  return csv;
+
+bail:
+  assert(csv->errmsg[0]);
+  csv->ok = false;
   return csv;
 }
 
@@ -433,14 +439,15 @@ csv_t csv_open(csv_config_t conf) {
 
 void csv_close(csv_t *csv) {
   if (csv) {
-    csvx_t *cb = csv->__internal;
-    if (cb) {
+    if (csv->__internal) {
+      csvx_t *cb = csv->__internal;
       free(cb->buf.ptr);
       free(cb->value.ptr);
       if (cb->fp) {
         fclose(cb->fp);
       }
-      free(cb);
+      free(csv->__internal);
+      csv->__internal = NULL;
     }
   }
 }
@@ -540,6 +547,7 @@ csv_config_t csv_default_config(void) {
   conf.qte = '"';
   conf.esc = '"';
   conf.delim = ',';
-  conf.maxrowsz = 1024 * 1024 * 1024;
+  conf.initbufsz = 1024 * 4;          // 4KB
+  conf.maxbufsz = 1024 * 1024 * 1024; // 1GB
   return conf;
 }

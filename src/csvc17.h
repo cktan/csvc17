@@ -16,10 +16,11 @@
 
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
-  int qte;          /* default double-quote */
-  int esc;          /* default double-quote */
-  int delim;        /* default comma */
-  int64_t maxrowsz; /* default 1GB */
+  int qte;       /* default double-quote */
+  int esc;       /* default double-quote */
+  int delim;     /* default comma */
+  int initbufsz; /* default 4KB */
+  int maxbufsz;  /* default 1GB */
 };
 
 typedef struct csv_t csv_t;
