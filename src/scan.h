@@ -45,21 +45,21 @@ static int __scan_calcflag(scan_t *scan) {
   return 0;
 }
 
-static inline void scan_init(scan_t *scan, char qte, char esc, char delim) {
-  memset(scan, 0, sizeof(*scan));
-  scan->qte = _mm256_set1_epi8(qte);
-  scan->esc = _mm256_set1_epi8(esc);
-  scan->delim = _mm256_set1_epi8(delim);
-  scan->endl = _mm256_set1_epi8('\n');
-  scan->esc_is_qte = (esc == qte);
-}
-
-static inline void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
-  scan->orig = buf;
-  scan->base = buf;
-  scan->p = buf;
-  scan->q = buf + buflen;
-  __scan_calcflag(scan);
+static scan_t scan_reset(int qte, int esc, int delim, const char *buf,
+                         int64_t buflen) {
+  scan_t scan;
+  memset(&scan, 0, sizeof(scan));
+  scan.qte = _mm256_set1_epi8(qte);
+  scan.esc = _mm256_set1_epi8(esc);
+  scan.delim = _mm256_set1_epi8(delim);
+  scan.endl = _mm256_set1_epi8('\n');
+  scan.esc_is_qte = (esc == qte);
+  scan.orig = buf;
+  scan.base = buf;
+  scan.p = buf;
+  scan.q = buf + buflen;
+  __scan_calcflag(&scan);
+  return scan;
 }
 
 static void __scan_forward(scan_t *scan) {

@@ -22,7 +22,8 @@ struct scan_t {
   int qte, esc, delim; // special chars
 };
 
-static scan_t scan_reset(int qte, int esc, int delim, char *buf, int buflen) {
+static scan_t scan_reset(int qte, int esc, int delim, char *buf,
+                         int64_t buflen) {
   scan_t scan = {0};
   scan.qte = qte;
   scan.esc = esc;

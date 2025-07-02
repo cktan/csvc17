@@ -10,9 +10,6 @@ using namespace std;
 
 TEST_CASE("scan1") {
 
-  scan_t scan;
-  scan_init(&scan, '"', '\\', '|');
-
   SUBCASE("simple") {
 
     const char *raw = "here is a quote \", "
@@ -20,7 +17,7 @@ TEST_CASE("scan1") {
                       "followed by a pipe |, "
                       "and finally a newline\n";
 
-    scan_reset(&scan, raw, strlen(raw));
+    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
 
     const char *const quote = strchr(raw, '"');
     const char *const backslash = strchr(raw, '\\');
@@ -30,15 +27,15 @@ TEST_CASE("scan1") {
     CHECK(backslash);
     CHECK(pipe);
     CHECK(newline);
-    
+
     CHECK(quote == scan_pop(&scan));
-    CHECK(quote+1 == scan_peek(&scan));
+    CHECK(quote + 1 == scan_peek(&scan));
 
     CHECK(backslash == scan_pop(&scan));
-    CHECK(backslash+1 == scan_peek(&scan));
+    CHECK(backslash + 1 == scan_peek(&scan));
 
     CHECK(pipe == scan_pop(&scan));
-    CHECK(pipe+1 == scan_peek(&scan));
+    CHECK(pipe + 1 == scan_peek(&scan));
 
     CHECK(newline == scan_pop(&scan));
     CHECK(nullptr == scan_peek(&scan));
@@ -49,14 +46,14 @@ TEST_CASE("scan1") {
 
   SUBCASE("empty string") {
     const char *raw = "";
-    scan_reset(&scan, raw, strlen(raw));
+    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
     const char *p = scan_pop(&scan);
     CHECK(p == nullptr);
   }
 
   SUBCASE("all char special; first char is special") {
     const char *raw = "|||||";
-    scan_reset(&scan, raw, strlen(raw));
+    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
     for (int i = 0; i < 5; i++) {
       const char *p = scan_pop(&scan);
       CHECK(p == raw + i);
@@ -67,23 +64,23 @@ TEST_CASE("scan1") {
   SUBCASE("random") {
     char buf[1025];
     memset(buf, 'x', sizeof(buf));
-    buf[sizeof(buf)-1] = 0;
+    buf[sizeof(buf) - 1] = 0;
     int buflen = sizeof(buf) - 1;
-    const char* special = "\"\\|\n";
+    const char *special = "\"\\|\n";
     const int N = 100;
     for (int i = 0; i < N; i++) {
       int off = random() % buflen;
       int ch = special[random() % 4];
-      if (buf[off] == 'x') 
-	buf[off] = ch;
+      if (buf[off] == 'x')
+        buf[off] = ch;
       else
-	i--;  // collision; retry.
+        i--; // collision; retry.
     }
 
-    scan_reset(&scan, buf, buflen);
-    char* xp = buf;
+    scan_t scan = scan_reset('"', '\\', '|', buf, buflen);
+    char *xp = buf;
     for (int i = 0; i < N; i++) {
-      const char* p = scan_pop(&scan);
+      const char *p = scan_pop(&scan);
       xp += strcspn(xp, special);
       CHECK(p == xp);
       CHECK(p + 1 == scan_peek(&scan));
