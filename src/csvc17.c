@@ -15,6 +15,38 @@
   else                                                                         \
     (void)0
 
+typedef struct scan_t scan_t;
+struct scan_t {
+  char *_p;
+  char *q;
+  int qte, esc, delim; // special chars
+};
+
+static scan_t scan_reset(int qte, int esc, int delim, char *buf, int buflen) {
+  scan_t scan = {0};
+  scan.qte = qte;
+  scan.esc = esc;
+  scan.delim = delim;
+  scan._p = buf;
+  scan.q = buf + buflen;
+  return scan;
+}
+
+// Get ptr to the next special char. After this call, p points
+// to the char after the special char.
+static char *scan_next(scan_t *sc) {
+  for (; sc->_p < sc->q; sc->_p++) {
+    int ch = *sc->_p;
+    if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
+      return sc->_p++;
+    }
+  }
+  return NULL;
+}
+
+/* get ptr to the current char */
+static char *scan_peek(scan_t *sc) { return (sc->_p < sc->q) ? sc->_p : NULL; }
+
 typedef struct ebuf_t ebuf_t;
 struct ebuf_t {
   char *ptr;
@@ -26,13 +58,6 @@ struct status_t {
   int64_t lineno; // current line number
   int64_t rowno;  // current row number
   // note: current column number is (csvx_t::value.top + 1)
-};
-
-typedef struct scan_t scan_t;
-struct scan_t {
-  char *_p;
-  char *q;
-  int qte, esc, delim; // special chars
 };
 
 typedef struct csvx_t csvx_t;
@@ -56,35 +81,10 @@ struct csvx_t {
   FILE *fp; // file ptr if not NULL
 };
 
-static scan_t scan_reset(const csvx_t *cb) {
-  scan_t scan = {0};
-  scan.qte = cb->conf.qte;
-  scan.esc = cb->conf.esc;
-  scan.delim = cb->conf.delim;
-  scan._p = cb->buf.ptr + cb->buf.bot;
-  scan.q = cb->buf.ptr + cb->buf.top;
-  return scan;
-}
-
 // True if EOF and buffer is empty
 static inline bool finished(const csvx_t *cb) {
   return cb->eof && (cb->buf.bot == cb->buf.top);
 }
-
-// Get ptr to the next special char. After this call, p points
-// to the char after the special char.
-static char *scan_next(scan_t *sc) {
-  for (; sc->_p < sc->q; sc->_p++) {
-    int ch = *sc->_p;
-    if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
-      return sc->_p++;
-    }
-  }
-  return NULL;
-}
-
-/* get ptr to the current char */
-static char *scan_peek(scan_t *sc) { return (sc->_p < sc->q) ? sc->_p : NULL; }
 
 static int read_file(void *context, char *buf, int bufsz, char *errmsg,
                      int errsz) {
@@ -379,7 +379,9 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     }
 
     // Set up a scan of the cb->buf[]
-    scan_t scan = scan_reset(cb);
+    scan_t scan =
+        scan_reset(cb->conf.qte, cb->conf.esc, cb->conf.delim,
+                   cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
     assert(scan._p <= scan.q);
 
     // Scan buf[] row by row
