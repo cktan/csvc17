@@ -1,7 +1,7 @@
 #pragma once
 
 extern "C" {
-#include "../src/csvc17.h"
+#include "../src/scan.h"
 }
 
 #include <cstring>
@@ -22,32 +22,29 @@ TEST_CASE("scan1") {
 
     scan_reset(&scan, raw, strlen(raw));
 
-    const char *quote = strchr(raw, '"');
-    const char *backslash = strchr(raw, '\\');
-    const char *pipe = strchr(raw, '|');
-    const char *newline = strchr(raw, '\n');
+    const char *const quote = strchr(raw, '"');
+    const char *const backslash = strchr(raw, '\\');
+    const char *const pipe = strchr(raw, '|');
+    const char *const newline = strchr(raw, '\n');
     CHECK(quote);
-    CHECK(quote == scan_peek(&scan));
-    CHECK(quote == scan_pop(&scan));
-    CHECK(*quote == '"');
-
     CHECK(backslash);
-    CHECK(backslash == scan_peek(&scan));
-    CHECK(backslash == scan_pop(&scan));
-    CHECK(*backslash == '\\');
-
     CHECK(pipe);
-    CHECK(pipe == scan_peek(&scan));
-    CHECK(pipe == scan_pop(&scan));
-    CHECK(*pipe == '|');
-
     CHECK(newline);
-    CHECK(newline == scan_peek(&scan));
-    CHECK(newline == scan_pop(&scan));
-    CHECK(*newline == '\n');
+    
+    CHECK(quote == scan_pop(&scan));
+    CHECK(quote+1 == scan_peek(&scan));
 
+    CHECK(backslash == scan_pop(&scan));
+    CHECK(backslash+1 == scan_peek(&scan));
+
+    CHECK(pipe == scan_pop(&scan));
+    CHECK(pipe+1 == scan_peek(&scan));
+
+    CHECK(newline == scan_pop(&scan));
     CHECK(nullptr == scan_peek(&scan));
+
     CHECK(nullptr == scan_pop(&scan));
+    CHECK(nullptr == scan_peek(&scan));
   }
 
   SUBCASE("empty string") {
@@ -63,6 +60,34 @@ TEST_CASE("scan1") {
     for (int i = 0; i < 5; i++) {
       const char *p = scan_pop(&scan);
       CHECK(p == raw + i);
+    }
+    CHECK(nullptr == scan_pop(&scan));
+  }
+
+  SUBCASE("random") {
+    char buf[1025];
+    memset(buf, 'x', sizeof(buf));
+    buf[sizeof(buf)-1] = 0;
+    int buflen = sizeof(buf) - 1;
+    const char* special = "\"\\|\n";
+    const int N = 100;
+    for (int i = 0; i < N; i++) {
+      int off = random() % buflen;
+      int ch = special[random() % 4];
+      if (buf[off] == 'x') 
+	buf[off] = ch;
+      else
+	i--;  // collision; retry.
+    }
+
+    scan_reset(&scan, buf, buflen);
+    char* xp = buf;
+    for (int i = 0; i < N; i++) {
+      const char* p = scan_pop(&scan);
+      xp += strcspn(xp, special);
+      CHECK(p == xp);
+      CHECK(p + 1 == scan_peek(&scan));
+      xp++;
     }
     CHECK(nullptr == scan_pop(&scan));
   }
