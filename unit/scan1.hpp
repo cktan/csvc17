@@ -17,7 +17,8 @@ TEST_CASE("scan1") {
                       "followed by a pipe |, "
                       "and finally a newline\n";
 
-    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
+    scan_t scan;
+    scan_reset(&scan, '"', '\\', '|', raw, strlen(raw));
 
     const char *const quote = strchr(raw, '"');
     const char *const backslash = strchr(raw, '\\');
@@ -46,14 +47,16 @@ TEST_CASE("scan1") {
 
   SUBCASE("empty string") {
     const char *raw = "";
-    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
+    scan_t scan;
+    scan_reset(&scan, '"', '\\', '|', raw, strlen(raw));
     const char *p = scan_next(&scan);
     CHECK(p == nullptr);
   }
 
   SUBCASE("all char special; first char is special") {
     const char *raw = "|||||";
-    scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
+    scan_t scan;
+    scan_reset(&scan, '"', '\\', '|', raw, strlen(raw));
     for (int i = 0; i < 5; i++) {
       const char *p = scan_next(&scan);
       CHECK(p == raw + i);
@@ -77,7 +80,8 @@ TEST_CASE("scan1") {
         i--; // collision; retry.
     }
 
-    scan_t scan = scan_reset('"', '\\', '|', buf, buflen);
+    scan_t scan;
+    scan_reset(&scan, '"', '\\', '|', buf, buflen);
     char *xp = buf;
     for (int i = 0; i < N; i++) {
       const char *p = scan_next(&scan);

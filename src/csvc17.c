@@ -47,7 +47,11 @@ static char *scan_next(scan_t *sc) {
 }
 
 /* get ptr to the current char */
-static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
+static char *scan_peek(scan_t *sc) { return sc->p; }
+
+static inline int scan_match(scan_t* scan, int ch) {
+  return ch == *scan->p;
+}
 
 #else
 #include "scan.h"
@@ -294,10 +298,9 @@ QUOTED:
 
     // CASE WHEN esc == qte
     if (qte == esc) {
-      pp = scan_peek(scan);
       // If two quotes: pop and continue in QUOTED state.
-      if (pp && *pp == qte) {
-        pp = scan_next(scan);
+      if (scan_match(scan, qte)) {
+	(void) scan_next(scan);
         goto QUOTED;
       }
       // If one quote: exit QUOTED state, continue in UNQUOTED state.
@@ -314,10 +317,9 @@ QUOTED:
     // here, ch is esc and we have either eq, ee, or ex.
     // for eq or ee, escape one char and continue in QUOTED state.
     // for ex, do nothing and continue in QUOTED state.
-    pp = scan_peek(scan);
-    if (pp && (*pp == qte || *pp == esc)) {
+    if (scan_match(scan, qte) || scan_match(scan, esc)) {
       // for eq or ee, eat the escaped char.
-      pp = scan_next(scan);
+      (void) scan_next(scan);
       goto QUOTED;
     }
     goto QUOTED;
@@ -387,9 +389,9 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     }
 
     // Set up a scan of the cb->buf[]
-    scan_t scan =
-        scan_reset(cb->conf.qte, cb->conf.esc, cb->conf.delim,
-                   cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
+    scan_t scan;
+    scan_reset(&scan, cb->conf.qte, cb->conf.esc, cb->conf.delim,
+	       cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
     assert(scan.p <= scan.q);
 
     // Scan buf[] row by row
