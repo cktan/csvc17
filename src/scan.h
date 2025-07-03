@@ -45,15 +45,18 @@ static int __scan_calcflag(scan_t *scan) {
   return 0;
 }
 
-static void scan_reset(scan_t* scan,
-		       int qte, int esc, int delim, const char *buf,
-		       int64_t buflen) {
-  memset(scan, 0, sizeof(*scan));
-  scan->qte = _mm256_set1_epi8(qte);
-  scan->esc = _mm256_set1_epi8(esc);
-  scan->delim = _mm256_set1_epi8(delim);
-  scan->endl = _mm256_set1_epi8('\n');
-  scan->esc_is_qte = (esc == qte);
+static scan_t scan_init(int qte, int esc, int delim) {
+  scan_t scan;
+  memset(&scan, 0, sizeof(scan));
+  scan.qte = _mm256_set1_epi8(qte);
+  scan.esc = _mm256_set1_epi8(esc);
+  scan.delim = _mm256_set1_epi8(delim);
+  scan.endl = _mm256_set1_epi8('\n');
+  scan.esc_is_qte = (esc == qte);
+  return scan;
+}
+
+static void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
   scan->orig = buf;
   scan->base = buf;
   scan->p = buf;
@@ -87,7 +90,4 @@ static inline const char *scan_next(scan_t *scan) {
   return (scan->p < scan->q) ? scan->p++ : 0;
 }
 
-
-static inline int scan_match(scan_t* scan, int ch) {
-  return ch == *scan->p;
-}
+static inline int scan_match(scan_t *scan, int ch) { return ch == *scan->p; }

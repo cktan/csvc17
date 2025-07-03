@@ -300,7 +300,7 @@ QUOTED:
     if (qte == esc) {
       // If two quotes: pop and continue in QUOTED state.
       if (scan_match(scan, qte)) {
-	(void) scan_next(scan);
+        (void)scan_next(scan);
         goto QUOTED;
       }
       // If one quote: exit QUOTED state, continue in UNQUOTED state.
@@ -319,7 +319,7 @@ QUOTED:
     // for ex, do nothing and continue in QUOTED state.
     if (scan_match(scan, qte) || scan_match(scan, esc)) {
       // for eq or ee, eat the escaped char.
-      (void) scan_next(scan);
+      (void)scan_next(scan);
       goto QUOTED;
     }
     goto QUOTED;
@@ -378,6 +378,7 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   cb->ebuf.len = sizeof(csv->errmsg);
 
   // keep scanning until EOF
+  scan_t scan = scan_init(cb->conf.qte, cb->conf.esc, cb->conf.delim);
   while (!finished(cb)) {
     int N;
     if (!cb->eof) {
@@ -389,9 +390,7 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     }
 
     // Set up a scan of the cb->buf[]
-    scan_t scan;
-    scan_reset(&scan, cb->conf.qte, cb->conf.esc, cb->conf.delim,
-	       cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
+    scan_reset(&scan, cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
     assert(scan.p <= scan.q);
 
     // Scan buf[] row by row
