@@ -3,6 +3,7 @@
  */
 #include "csvc17.h"
 #include <assert.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -561,4 +562,168 @@ csv_config_t csv_default_config(void) {
   conf.initbufsz = 1024 * 4;          // 4KB
   conf.maxbufsz = 1024 * 1024 * 1024; // 1GB
   return conf;
+}
+
+// Read an int (without signs) from the string p. Return #bytes consumed, i.e.,
+// 0 on failure.
+static int read_int(const char *p, int *ret) {
+  const char *pp = p;
+  int val = 0;
+  for (; isdigit(*p); p++) {
+    val = val * 10 + (*p - '0');
+    if (val < 0) {
+      return 0; // overflowed
+    }
+  }
+  *ret = val;
+  return p - pp;
+}
+
+// Read a date from p[].  Return #bytes consumed, i.e., 0 on failure.
+static int read_date(const char *p, int *year, int *month, int *day) {
+  const char *pp = p;
+  int n = read_int(p, year);
+  if (n != 4 || p[4] != '-') {
+    return 0;
+  }
+  n = read_int(p += 5, month);
+  if (n != 2 || p[2] != '-') {
+    return 0;
+  }
+  n = read_int(p += 3, day);
+  if (n != 2) {
+    return 0;
+  }
+  p += 2;
+  return p - pp;
+}
+
+// Read a time as HH:MM:SS.subsec from p[]. Return #bytes consumed.
+static int read_time(const char *p, int *hour, int *minute, int *second,
+                     int *usec) {
+  const char *pp = p;
+  int n;
+  *hour = *minute = *second = *usec = 0;
+  n = read_int(p, hour);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, minute);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, second);
+  if (n != 2) {
+    return 0;
+  }
+  p += 2;
+  if (*p != '.') {
+    return p - pp;
+  }
+  p++; // skip the period
+  int micro_factor = 100000;
+  while (isdigit(*p) && micro_factor) {
+    *usec += (*p - '0') * micro_factor;
+    micro_factor /= 10;
+    p++;
+  }
+  return p - pp;
+}
+
+// Reads a timezone from p[]. Return #bytes consumed.
+static int read_tzone(const char *p, char *tzsign, int *tzhour, int *tzminute) {
+  const char *pp = p;
+  *tzhour = *tzminute = 0;
+  *tzsign = '+';
+  // look for Zulu
+  if (*p == 'Z' || *p == 'z') {
+    return 1;
+  }
+
+  *tzsign = *p++;
+  if (!(*tzsign == '+' || *tzsign == '-')) {
+    return 0;
+  }
+
+  // look for HH:MM
+  int n;
+  n = read_int(p, tzhour);
+  if (n != 2 || p[2] != ':') {
+    return 0;
+  }
+  n = read_int(p += 3, tzminute);
+  if (n != 2) {
+    return 0;
+  }
+  p += 2;
+  return p - pp;
+}
+
+// Parse YYYY-MM-DD
+int csv_parse_ymd(const char *s, int *year, int *month, int *day) {
+  int n = read_date(s, year, month, day);
+  if (!n || s[n]) {
+    return -1;
+  }
+  return 0;
+}
+
+// Parse M/D/YYYY
+int csv_parse_mdy(const char *s, int *year, int *month, int *day) {
+  int n = read_int(s, month);
+  if (!n || s[n] != '/') {
+    return -1;
+  }
+  n = read_int(s += n + 1, day);
+  if (!n || s[n] != '/') {
+    return -1;
+  }
+  n = read_int(s += n + 1, year);
+  if (!n || s[n]) {
+    return -1;
+  }
+  return 0;
+}
+
+// Parse HH:MM:SS.subsec
+int csv_parse_time(const char *s, int *hour, int *minute, int *second,
+                   int *usec) {
+  int n = read_time(s, hour, minute, second, usec);
+  if (!n || s[n]) {
+    return -1;
+  }
+  return 0;
+}
+
+// Parse date time
+int csv_parse_timestamp(const char *s, int *year, int *month, int *day,
+                        int *hour, int *minute, int *second, int *usec) {
+  int n = read_date(s, year, month, day);
+  if (!n || !(s[n] == ' ' || s[n] == 'T')) {
+    return -1;
+  }
+  n = read_time(s += n + 1, hour, minute, second, usec);
+  if (!n || s[n]) {
+    return -1;
+  }
+  return 0;
+}
+
+// Parse date time tzone
+int csv_parse_timestamptz(const char *s, int *year, int *month, int *day,
+                          int *hour, int *minute, int *second, int *usec,
+                          char *tzsign, int *tzhour, int *tzminute) {
+  int n = read_date(s, year, month, day);
+  if (!n || !(s[n] == ' ' || s[n] == 'T')) {
+    return -1;
+  }
+  n = read_time(s += n + 1, hour, minute, second, usec);
+  if (!n) {
+    return -1;
+  }
+  n = read_tzone(s += n, tzsign, tzhour, tzminute);
+  if (!n || s[n]) {
+    return -1;
+  }
+  return 0;
 }

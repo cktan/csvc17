@@ -119,36 +119,42 @@ CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc);
 
 /**
  *  Parse a YYYY-MM-DD. Return 0 on success, -1 otherwise.
+ *  The function does not validate the date values, i.e., day may be 32.
  */
 CSV_EXTERN int csv_parse_ymd(const char *s, int *year, int *month, int *day);
 
 /**
  *  Parse a M/D/YYYY. Return 0 on success, -1 otherwise.
+ *  The function does not validate the date values, i.e., day may be 32.
  */
 CSV_EXTERN int csv_parse_mdy(const char *s, int *year, int *month, int *day);
 
 /**
  *  Parse a HH:MM:SS{.subsec}. Return 0 on success, -1 otherwise.
+ *  The function does not validate the time values, i.e., hour may be 25.
  */
 CSV_EXTERN int csv_parse_time(const char *s, int *hour, int *minute,
-                              int *second, int64_t *usec);
+                              int *second, int *usec);
 
 /**
  *  Parse a timestamp 'YYYY-MM-DD HH:MM:SS{.subsec}'. The character separating
  *  date and time may be a 'T' or a space. Return 0 on success, -1 otherwise.
+ *  The function does not validate the date and time values.
  */
 CSV_EXTERN int csv_parse_timestamp(const char *s, int *year, int *month,
                                    int *day, int *hour, int *minute,
-                                   int *second, int64_t *usec);
+                                   int *second, int *usec);
 
 /**
  *  Parse a timestamptz 'YYYY-MM-DD HH:MM:SS{.subsec}{timezone}'. The character
  *  separating date and time may be a 'T' or a space. Return 0 on success, -1
  *  otherwise.
+ *  The function does not validate the timestamp values.
  */
 CSV_EXTERN int csv_parse_timestamptz(const char *s, int *year, int *month,
                                      int *day, int *hour, int *minute,
-                                     int *second, int64_t *usec, int *tzminute);
+                                     int *second, int *usec, char *tzsign,
+                                     int *tzhour, int *tzminute);
 
 /**
  *  Get the default config. Set values if default is not correct, and
