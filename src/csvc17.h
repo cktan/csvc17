@@ -20,6 +20,10 @@
  *  the string. Utility functions to parse date, time, and timestamp
  *  are also provided.
  *
+ *  C++ Note: If the callback functions may potentially throw
+ *  exceptions, make sure to catch the exception and call csv_close()
+ *  to avoid resource leak.
+ *
  */
 
 #include <stdbool.h>
