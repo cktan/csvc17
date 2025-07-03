@@ -257,9 +257,9 @@ STARTVAL:
   if (p >= scan->q) {
     return 0;
   }
-  
+
   csv_value_t value = {0};
-  value.ptr = (char*) p;
+  value.ptr = (char *)p;
   goto UNQUOTED;
 
 UNQUOTED:
