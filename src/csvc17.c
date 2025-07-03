@@ -15,9 +15,10 @@
   else                                                                         \
     (void)0
 
+#if 0
 typedef struct scan_t scan_t;
 struct scan_t {
-  char *_p;
+  char *p;
   char *q;
   int qte, esc, delim; // special chars
 };
@@ -28,7 +29,7 @@ static scan_t scan_reset(int qte, int esc, int delim, char *buf,
   scan.qte = qte;
   scan.esc = esc;
   scan.delim = delim;
-  scan._p = buf;
+  scan.p = buf;
   scan.q = buf + buflen;
   return scan;
 }
@@ -36,17 +37,21 @@ static scan_t scan_reset(int qte, int esc, int delim, char *buf,
 // Get ptr to the next special char. After this call, p points
 // to the char after the special char.
 static char *scan_next(scan_t *sc) {
-  for (; sc->_p < sc->q; sc->_p++) {
-    int ch = *sc->_p;
+  for (; sc->p < sc->q; sc->p++) {
+    int ch = *sc->p;
     if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
-      return sc->_p++;
+      return sc->p++;
     }
   }
   return NULL;
 }
 
 /* get ptr to the current char */
-static char *scan_peek(scan_t *sc) { return (sc->_p < sc->q) ? sc->_p : NULL; }
+static char *scan_peek(scan_t *sc) { return (sc->p < sc->q) ? sc->p : NULL; }
+
+#else
+#include "scan.h"
+#endif
 
 typedef struct ebuf_t ebuf_t;
 struct ebuf_t {
@@ -248,11 +253,13 @@ static int onerow(scan_t *scan, csvx_t *cb) {
   cb->status.lineno++;
 
 STARTVAL:
-  csv_value_t value = {0};
-  p = value.ptr = scan_peek(scan);
-  if (!p) {
+  p = scan->p;
+  if (p >= scan->q) {
     return 0;
   }
+  
+  csv_value_t value = {0};
+  value.ptr = (char*) p;
   goto UNQUOTED;
 
 UNQUOTED:
@@ -383,12 +390,12 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     scan_t scan =
         scan_reset(cb->conf.qte, cb->conf.esc, cb->conf.delim,
                    cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
-    assert(scan._p <= scan.q);
+    assert(scan.p <= scan.q);
 
     // Scan buf[] row by row
     for (;;) {
       status_t saved_status = cb->status;
-      char *saved_p = scan._p;
+      const char *saved_p = scan.p;
 
       // Get one row
       N = onerow(&scan, cb);
@@ -403,7 +410,7 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       assert(N == 1);
 
       // Advance the buffer
-      cb->buf.bot += scan._p - saved_p;
+      cb->buf.bot += scan.p - saved_p;
 
       // Invoke the callback to process the current row
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,

@@ -28,26 +28,26 @@ TEST_CASE("scan1") {
     CHECK(pipe);
     CHECK(newline);
 
-    CHECK(quote == scan_pop(&scan));
+    CHECK(quote == scan_next(&scan));
     CHECK(quote + 1 == scan_peek(&scan));
 
-    CHECK(backslash == scan_pop(&scan));
+    CHECK(backslash == scan_next(&scan));
     CHECK(backslash + 1 == scan_peek(&scan));
 
-    CHECK(pipe == scan_pop(&scan));
+    CHECK(pipe == scan_next(&scan));
     CHECK(pipe + 1 == scan_peek(&scan));
 
-    CHECK(newline == scan_pop(&scan));
-    CHECK(nullptr == scan_peek(&scan));
+    CHECK(newline == scan_next(&scan));
+    CHECK(0 == *scan_peek(&scan));
 
-    CHECK(nullptr == scan_pop(&scan));
-    CHECK(nullptr == scan_peek(&scan));
+    CHECK(nullptr == scan_next(&scan));
+    CHECK(0 == *scan_peek(&scan));
   }
 
   SUBCASE("empty string") {
     const char *raw = "";
     scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
-    const char *p = scan_pop(&scan);
+    const char *p = scan_next(&scan);
     CHECK(p == nullptr);
   }
 
@@ -55,10 +55,10 @@ TEST_CASE("scan1") {
     const char *raw = "|||||";
     scan_t scan = scan_reset('"', '\\', '|', raw, strlen(raw));
     for (int i = 0; i < 5; i++) {
-      const char *p = scan_pop(&scan);
+      const char *p = scan_next(&scan);
       CHECK(p == raw + i);
     }
-    CHECK(nullptr == scan_pop(&scan));
+    CHECK(nullptr == scan_next(&scan));
   }
 
   SUBCASE("random") {
@@ -80,12 +80,12 @@ TEST_CASE("scan1") {
     scan_t scan = scan_reset('"', '\\', '|', buf, buflen);
     char *xp = buf;
     for (int i = 0; i < N; i++) {
-      const char *p = scan_pop(&scan);
+      const char *p = scan_next(&scan);
       xp += strcspn(xp, special);
       CHECK(p == xp);
       CHECK(p + 1 == scan_peek(&scan));
       xp++;
     }
-    CHECK(nullptr == scan_pop(&scan));
+    CHECK(nullptr == scan_next(&scan));
   }
 }

@@ -71,10 +71,10 @@ static void __scan_forward(scan_t *scan) {
 }
 
 static inline const char *scan_peek(scan_t *scan) {
-  return scan->p < scan->q ? scan->p : NULL;
+  return scan->p;
 }
 
-static inline const char *scan_pop(scan_t *scan) {
+static inline const char *scan_next(scan_t *scan) {
   if (!scan->flag) {
     __scan_forward(scan);
   }
