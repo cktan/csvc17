@@ -4,6 +4,24 @@
 #ifndef CSVC17_H
 #define CSVC17_H
 
+/*
+ *  USAGE:
+ *
+ *  1. call csv_open() to obtain a handle
+ *  2. call csv_parse() and supply a feed function and a per-row
+ *     function.
+ *  3. call csv_close() to free up resources.
+ *
+ *  The feed function will be invoked automatically when the parser
+ *  needs more data.
+ *
+ *  The per-row function will be invoked whenever a row is
+ *  determined. In the per-row function, call csv_unquote to normalize
+ *  the string. Utility functions to parse date, time, and timestamp
+ *  are also provided.
+ *
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,11 +43,15 @@ struct csv_config_t {
 
 typedef struct csv_t csv_t;
 struct csv_t {
-  bool ok;
-  void *__internal;
-  char errmsg[200];
+  bool ok;          /* check this for error */
+  void *__internal; /* do not touch */
+  char errmsg[200]; /* if not ok, this stores an error message */
 };
 
+/**
+ *  A cell in the CSV file. If the value is quoted, call csv_unquote to obtain
+ *  a NUL-terminated string.
+ */
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
   char *ptr;
@@ -38,7 +60,7 @@ struct csv_value_t {
 };
 
 /**
- *  This is a callback that is invoked when the parser needs data.
+ *  This callback is invoked when the parser needs data.
  *  Return #bytes copied into buf on success, 0 on EOF, -1 on error. If
  *  you return -1, be sure to write an error message into errbuf[].
  */
@@ -46,7 +68,7 @@ typedef int csv_feed_t(void *context, char *buf, int bufsz, char *errbuf,
                        int errsz);
 
 /**
- *  This is a callback that is invoked per row.  Return 0 on success,
+ *  This callback is invoked per row.  Return 0 on success,
  *  -1 otherwise. If you return -1, be sure to write an error message
  *  into errbuf[] using lineno and rowno.
  *
@@ -87,8 +109,42 @@ CSV_EXTERN void csv_close(csv_t *csv);
 
 /**
  *  Unquote a value and return a NUL-terminated string.
+ *  This will modify memory area value.ptr[0 .. len+1].
  */
 CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc);
+
+/**
+ *  Parse a YYYY-MM-DD. Return 0 on success, -1 otherwise.
+ */
+CSV_EXTERN int csv_parse_ymd(const char *s, int *year, int *month, int *day);
+
+/**
+ *  Parse a M/D/YYYY. Return 0 on success, -1 otherwise.
+ */
+CSV_EXTERN int csv_parse_mdy(const char *s, int *year, int *month, int *day);
+
+/**
+ *  Parse a HH:MM:SS{.subsec}. Return 0 on success, -1 otherwise.
+ */
+CSV_EXTERN int csv_parse_time(const char *s, int *hour, int *minute,
+                              int *second, int64_t *usec);
+
+/**
+ *  Parse a timestamp 'YYYY-MM-DD HH:MM:SS{.subsec}'. The character separating
+ *  date and time may be a 'T' or a space. Return 0 on success, -1 otherwise.
+ */
+CSV_EXTERN int csv_parse_timestamp(const char *s, int *year, int *month,
+                                   int *day, int *hour, int *minute,
+                                   int *second, int64_t *usec);
+
+/**
+ *  Parse a timestamptz 'YYYY-MM-DD HH:MM:SS{.subsec}{timezone}'. The character
+ *  separating date and time may be a 'T' or a space. Return 0 on success, -1
+ *  otherwise.
+ */
+CSV_EXTERN int csv_parse_timestamptz(const char *s, int *year, int *month,
+                                     int *day, int *hour, int *minute,
+                                     int *second, int64_t *usec, int *tzminute);
 
 /**
  *  Get the default config. Set values if default is not correct, and
