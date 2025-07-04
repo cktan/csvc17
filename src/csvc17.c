@@ -381,7 +381,12 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   cb->ebuf.len = sizeof(csv->errmsg);
 
   // keep scanning until EOF
-  scan_t scan = scan_init(cb->conf.qte, cb->conf.esc, cb->conf.delim);
+  char accept[5] = {0};
+  accept[0] = cb->conf.qte;
+  accept[1] = cb->conf.delim;
+  accept[2] = '\n';
+  accept[3] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
+  scan_t scan = scan_init(accept);
   while (!finished(cb)) {
     int N;
     if (!cb->eof) {
@@ -520,6 +525,7 @@ CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
   char *p = value.ptr;
   char *q = p + value.len;
   *q = 0;
+  // p is now a NUL terminated string
 
   // if value is not quoted, just return it.
   if (!value.quoted) {
@@ -529,8 +535,7 @@ CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
   // fast path for "xxxx", where x != esc
   if (p[0] == qte && q[-1] == qte) {
     if (!memchr(p + 1, esc, q - p - 2)) {
-      q[-1] = 0;
-      return p + 1;
+      return *--q = 0, p + 1;
     }
   }
 

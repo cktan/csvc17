@@ -10,7 +10,12 @@ using namespace std;
 
 TEST_CASE("scan1") {
 
-  scan_t scan = scan_init('"', '\\', '|');
+  char accept[5];
+  accept[0] = '"';
+  accept[1] = '\\';
+  accept[2] = '|';
+  accept[3] = '\n';
+  scan_t scan = scan_init(accept);
 
   SUBCASE("simple") {
 

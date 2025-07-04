@@ -6,7 +6,8 @@
 typedef struct scan_t scan_t;
 struct scan_t {
   // for alignment
-  __m256i qte, esc, delim, endl;
+  __m256i ch[4];
+  char inuse[4];   // flag which of ch[x] are in use
   char tmpbuf[32]; // copy when (q-base) < 32b
 
   // orig <= base <= p <= q.
@@ -16,7 +17,6 @@ struct scan_t {
   const char *q;    // scan ends here
 
   uint32_t flag;  // bmap marks interesting bits offset from base
-  int esc_is_qte; // true if esc == qte
 };
 
 static int __scan_calcflag(scan_t *scan) {
@@ -32,27 +32,23 @@ static int __scan_calcflag(scan_t *scan) {
   }
 
   __m256i src = _mm256_loadu_si256((__m256i *)base);
-  if (scan->esc_is_qte) {
-    scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
-                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
-                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
-  } else {
-    scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->qte)) |
-                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->esc)) |
-                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->delim)) |
-                 _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->endl));
+  scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->ch[0]));
+  for (int i = 1; i < 4; i++) {
+    if (scan->inuse[i]) {
+      scan->flag |= _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->ch[i]));
+    }
   }
   return 0;
 }
 
-static scan_t scan_init(int qte, int esc, int delim) {
+static scan_t scan_init(const char* accept) {
   scan_t scan;
   memset(&scan, 0, sizeof(scan));
-  scan.qte = _mm256_set1_epi8(qte);
-  scan.esc = _mm256_set1_epi8(esc);
-  scan.delim = _mm256_set1_epi8(delim);
-  scan.endl = _mm256_set1_epi8('\n');
-  scan.esc_is_qte = (esc == qte);
+  for (int i = 0; i < 4; i++) {
+    if (!accept[i]) break;
+    scan.ch[i] = _mm256_set1_epi8(accept[i]);
+    scan.inuse[i] = 1;
+  }
   return scan;
 }
 
