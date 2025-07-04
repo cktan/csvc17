@@ -1,9 +1,6 @@
 #pragma once
 
-extern "C" {
 #include "../src/csvc17.h"
-}
-
 #include <cstring>
 
 using namespace std;
