@@ -16,9 +16,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'  # Specify your Python version
+      uses: actions/setup-python@v5
+      with: python-version: '3.x'  # Specify your Python version
     - name: make clean all
       run: make clean all
     - name: make test
