@@ -8,6 +8,8 @@ extern "C" {
 
 using namespace std;
 
+namespace csv1 {
+
 struct context_t {
   const char QTE = '"';
   const char ESC = '"';
@@ -63,11 +65,17 @@ static int perrow(void *ctx_, int n, csv_value_t value[], int64_t lineno,
   return 0;
 }
 
+} // namespace csv1
+
 TEST_CASE("csv1") {
+
+  using namespace csv1;
+
   SUBCASE("open and shut") {
     context_t ctx{""};
     CHECK(ctx.csv.ok);
   }
+
   SUBCASE("one row") {
     context_t ctx{"abc\r\n"};
     CHECK(ctx.csv.ok);
@@ -77,6 +85,7 @@ TEST_CASE("csv1") {
     CHECK(ctx.result[0].size() == 1);
     CHECK(ctx.result[0][0] == "abc");
   }
+
   SUBCASE("two rows") {
     context_t ctx{"abc|def|ghi\r\njkl|mno|pqr"};
     CHECK(ctx.csv.ok);

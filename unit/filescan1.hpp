@@ -7,43 +7,63 @@ extern "C" {
 #include <cstring>
 
 using namespace std;
+namespace filescan1 {
+
+const char *PATH = "/tmp/csv_filescan_test.cv";
+
+struct context_t {
+  csv_t csv;
+  std::vector<std::vector<std::string>> result;
+  context_t() { csv = csv_open(csv_default_config()); }
+  ~context_t() { csv_close(&csv); }
+  context_t(context_t &) = delete;
+  context_t &operator=(context_t &) = delete;
+  context_t(context_t &&) = delete;
+  context_t &operator=(context_t &&) = delete;
+};
+
+static int perrow(void *ctx_, int n, csv_value_t value[], int64_t lineno,
+                  int64_t rowno, char *errbuf, int errsz) {
+  (void)lineno;
+  (void)rowno;
+  (void)errbuf;
+  (void)errsz;
+  context_t *ctx = (context_t *)ctx_;
+  std::vector<std::string> row;
+  row.resize(n);
+  for (int i = 0; i < n; i++) {
+    char *p = csv_unquote(value[i], '"', '"');
+    if (!p) {
+      fprintf(stderr, "Internal error!");
+      abort();
+    }
+    row[i] = p;
+  }
+  ctx->result.push_back(std::move(row));
+  return 0;
+}
+
+}; // namespace filescan1
 
 TEST_CASE("filescan1") {
-  csv_status_t status;
 
-  const char *path = "/tmp/csv_filescan_test.cv";
+  using namespace filescan1;
 
   // Create an output file stream object
   {
-    std::ofstream out(path);
+    std::ofstream out(PATH);
     CHECK(out);
-    out << "abc|def|hij\nabc|def|hij";
+    out << "abc,def,hij\nabc,def,hij";
     out.close();
   }
 
-  SUBCASE("open and shut") {
-    csv_filescan_t *fs = csv_filescan_open(
-        path, (void *)1, '"', '"', '|',
-        [](void *, int, const csv_value_t *, csv_t *) { return 0; }, &status);
-    CHECK(fs);
-    csv_filescan_close(fs);
-  }
   SUBCASE("2 rows with missing final newline") {
-    struct context_t {
-      int count;
-    } context;
-    context.count = 0;
-    csv_filescan_t *fs = csv_filescan_open(
-        path, (void *)&context, '"', '"', '|',
-        [](void *ctx_, int, const csv_value_t *, csv_t *) {
-          context_t *context = (context_t *)ctx_;
-          context->count++;
-          return 0;
-        },
-        &status);
-    CHECK(fs);
-    CHECK(0 == csv_filescan_run(fs, &status));
-    CHECK(context.count == 2);
-    csv_filescan_close(fs);
+    context_t ctx;
+
+    FILE *fp = fopen(PATH, "r");
+    CHECK(fp);
+    csv_parse_file(&ctx.csv, fp, &ctx, perrow);
+
+    CHECK(ctx.result.size() == 2);
   }
 }
