@@ -103,7 +103,7 @@ CSV_EXTERN csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
  *  Parse a file. This function will call csv_parse(). Always returns the csv
  *  param. Check csv->ok for success or failure.
  *
- *  Note: csv_close() will call fclose(fp).
+ *  Note: csv_close() will eventually call on fclose(fp) whether this function succeed or not.
  */
 CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
                                  csv_perrow_t *perrow);

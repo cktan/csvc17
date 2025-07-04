@@ -468,8 +468,11 @@ void csv_close(csv_t *csv) {
 
 csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
                       csv_perrow_t *perrow) {
+  /* Note: we own fp now. Make sure it closed here or
+   * in csv_close(). */
   if (!csv->ok) {
     assert(csv->errmsg[0]);
+    fclose(fp);
     return csv;
   }
   csvx_t *cb = csv->__internal;
@@ -477,8 +480,8 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
   cb->ebuf.len = sizeof(csv->errmsg);
 
   if (cb->fp) {
-    RETERROR(cb, "%s", "busy file handle");
-    return csv;
+    fclose(cb->fp);
+    cb->fp = 0;
   }
 
   cb->fp = fp;
@@ -487,29 +490,15 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
 
 csv_t *csv_parse_file_ex(csv_t *csv, const char *path, void *context,
                          csv_perrow_t *perrow) {
-  if (!csv->ok) {
-    assert(csv->errmsg[0]);
-    return csv;
-  }
-
-  csvx_t *cb = csv->__internal;
-  cb->ebuf.ptr = csv->errmsg;
-  cb->ebuf.len = sizeof(csv->errmsg);
-
-  if (cb->fp) {
-    RETERROR(cb, "%s", "busy file handle");
-    return csv;
-  }
-
-  cb->fp = fopen(path, "r");
-  if (!cb->fp) {
+  FILE* fp = fopen(path, "r");
+  if (!fp) {
     snprintf(csv->errmsg, sizeof(csv->errmsg), "fopen failed - %s",
              strerror(errno));
     csv->ok = false;
     return csv;
   }
 
-  return csv_parse(csv, context, read_file, perrow);
+  return csv_parse_file(csv, fp, context, perrow);
 }
 
 /*
