@@ -93,27 +93,27 @@ typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
 CSV_EXTERN csv_t csv_open(csv_config_t config);
 
 /**
- *  Run the scan and invoke callbacks on demand. Always returns the csv param.
- *  Check csv->ok for success or failure.
+ *  Run the scan and invoke callbacks on demand. Return 0 on success, -1 otherwise.
+ *  On failure, check for error message in csv->errmsg.
  */
-CSV_EXTERN csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
-                            csv_perrow_t *perrrow);
+CSV_EXTERN int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
+			 csv_perrow_t *perrrow);
 
 /**
- *  Parse a file. This function will call csv_parse(). Always returns the csv
- *  param. Check csv->ok for success or failure.
+ *  Parse a file. This function will call csv_parse(). Return 0 on success, -1 otherwise.
+ *  On failure, check for error message in csv->errmsg.
  *
  *  Note: csv_close() will eventually call on fclose(fp) whether this function succeed or not.
  */
-CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
-                                 csv_perrow_t *perrow);
+CSV_EXTERN int csv_parse_file(csv_t *csv, FILE *fp, void *context,
+			      csv_perrow_t *perrow);
 
 /**
- *  Parse a file. This function will call csv_parse(). Always returns the csv
- *  param. Check csv->ok for success or failure.
+ *  Parse a file. This function will call csv_parse(). Return 0 on success, -1 otherwise.
+ *  On failure, check for error message in csv->errmsg.
  */
-CSV_EXTERN csv_t *csv_parse_file_ex(csv_t *csv, const char *path, void *context,
-                                    csv_perrow_t *perrow);
+CSV_EXTERN int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
+				 csv_perrow_t *perrow);
 
 /**
  *  Close the scan and release resources.

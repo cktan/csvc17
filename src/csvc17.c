@@ -367,11 +367,11 @@ ENDROW:
   return 1;
 }
 
-csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
-                 csv_perrow_t *perrow) {
+int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
+	      csv_perrow_t *perrow) {
   if (!csv->ok) {
     assert(csv->errmsg[0]);
-    return csv;
+    return -1;
   }
   csv->ok = false;
   csv->errmsg[0] = 0;
@@ -429,12 +429,12 @@ csv_t *csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   }
 
   csv->ok = true;
-  return csv;
+  return 0;
 
 bail:
   assert(csv->errmsg[0]);
   csv->ok = false;
-  return csv;
+  return -1;
 }
 
 csv_t csv_open(csv_config_t conf) {
@@ -466,14 +466,14 @@ void csv_close(csv_t *csv) {
   }
 }
 
-csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
-                      csv_perrow_t *perrow) {
+int csv_parse_file(csv_t *csv, FILE *fp, void *context,
+		   csv_perrow_t *perrow) {
   /* Note: we own fp now. Make sure it closed here or
    * in csv_close(). */
   if (!csv->ok) {
     assert(csv->errmsg[0]);
     fclose(fp);
-    return csv;
+    return -1;
   }
   csvx_t *cb = csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
@@ -488,14 +488,14 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
   return csv_parse(csv, context, read_file, perrow);
 }
 
-csv_t *csv_parse_file_ex(csv_t *csv, const char *path, void *context,
+int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
                          csv_perrow_t *perrow) {
   FILE* fp = fopen(path, "r");
   if (!fp) {
     snprintf(csv->errmsg, sizeof(csv->errmsg), "fopen failed - %s",
              strerror(errno));
     csv->ok = false;
-    return csv;
+    return -1;
   }
 
   return csv_parse_file(csv, fp, context, perrow);
