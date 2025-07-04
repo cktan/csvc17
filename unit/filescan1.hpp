@@ -53,11 +53,11 @@ TEST_CASE("filescan1") {
   {
     std::ofstream out(PATH);
     CHECK(out);
-    out << "abc,def,hij\nabc,def,hij";
+    out << "abc,def,hij\r\nxxx,yyy,zzz";
     out.close();
   }
 
-  SUBCASE("2 rows with missing final newline") {
+  SUBCASE("sub1") {
     context_t ctx;
 
     FILE *fp = fopen(PATH, "r");
@@ -65,5 +65,17 @@ TEST_CASE("filescan1") {
     csv_parse_file(&ctx.csv, fp, &ctx, perrow);
 
     CHECK(ctx.result.size() == 2);
+    CHECK(ctx.result[0] == vector<string>{"abc", "def", "hij"});
+    CHECK(ctx.result[1] == vector<string>{"xxx", "yyy", "zzz"});
+  }
+
+  SUBCASE("sub2") {
+    context_t ctx;
+
+    csv_parse_file_ex(&ctx.csv, PATH, &ctx, perrow);
+
+    CHECK(ctx.result.size() == 2);
+    CHECK(ctx.result[0] == vector<string>{"abc", "def", "hij"});
+    CHECK(ctx.result[1] == vector<string>{"xxx", "yyy", "zzz"});
   }
 }

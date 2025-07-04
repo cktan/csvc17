@@ -109,6 +109,13 @@ CSV_EXTERN csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
                                  csv_perrow_t *perrow);
 
 /**
+ *  Parse a file. This function will call csv_parse(). Always returns the csv
+ *  param. Check csv->ok for success or failure.
+ */
+CSV_EXTERN csv_t *csv_parse_file_ex(csv_t *csv, const char *path, void *context,
+                                    csv_perrow_t *perrow);
+
+/**
  *  Close the scan and release resources.
  */
 CSV_EXTERN void csv_close(csv_t *csv);

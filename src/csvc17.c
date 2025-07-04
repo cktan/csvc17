@@ -4,6 +4,7 @@
 #include "csvc17.h"
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -192,6 +193,7 @@ static int ensure_buf(csvx_t *cb) {
   return 0;
 }
 
+///////////////
 // fill cb->buf[]. Return 0 on success, -1 otherwise.
 static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
   assert(!cb->eof);
@@ -480,6 +482,33 @@ csv_t *csv_parse_file(csv_t *csv, FILE *fp, void *context,
   }
 
   cb->fp = fp;
+  return csv_parse(csv, context, read_file, perrow);
+}
+
+csv_t *csv_parse_file_ex(csv_t *csv, const char *path, void *context,
+                         csv_perrow_t *perrow) {
+  if (!csv->ok) {
+    assert(csv->errmsg[0]);
+    return csv;
+  }
+
+  csvx_t *cb = csv->__internal;
+  cb->ebuf.ptr = csv->errmsg;
+  cb->ebuf.len = sizeof(csv->errmsg);
+
+  if (cb->fp) {
+    RETERROR(cb, "%s", "busy file handle");
+    return csv;
+  }
+
+  cb->fp = fopen(path, "r");
+  if (!cb->fp) {
+    snprintf(csv->errmsg, sizeof(csv->errmsg), "fopen failed - %s",
+             strerror(errno));
+    csv->ok = false;
+    return csv;
+  }
+
   return csv_parse(csv, context, read_file, perrow);
 }
 
