@@ -550,7 +550,9 @@ UNQUOTED:
   p = pp;
   memmove(p, p + 1, q - p);
   q--;
+  assert(*q == 0);
 QUOTED:
+  // TODO: need to speed this up. Need to look for esc or qte 
   assert(p < q);
   if (p + 1 < q && p[0] == esc && (p[1] == esc || p[1] == qte)) {
     // shift down
