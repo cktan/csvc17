@@ -7,10 +7,10 @@
 /*
  *  USAGE:
  *
- *  1. call csv_open() to obtain a handle
- *  2. call csv_parse() and supply a feed function and a per-row
- *     function.
- *  3. call csv_close() to free up resources.
+ *  1. Call csv_open() to obtain a handle.
+ *  2. Call csv_parse() and supply a feed function and a per-row
+ *     function, or call csv_parse_file().
+ *  3. Call csv_close() to free up resources.
  *
  *  The feed function will be invoked automatically when the parser
  *  needs more data.
