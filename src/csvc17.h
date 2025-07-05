@@ -39,11 +39,11 @@
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
   bool unquote_values; /* default true; */
-  int qte;       /* default double-quote */
-  int esc;       /* default double-quote */
-  int delim;     /* default comma */
-  int initbufsz; /* default 4KB */
-  int maxbufsz;  /* default 1GB */
+  int qte;             /* default double-quote */
+  int esc;             /* default double-quote */
+  int delim;           /* default comma */
+  int initbufsz;       /* default 4KB */
+  int maxbufsz;        /* default 1GB */
 };
 
 typedef struct csv_t csv_t;
@@ -94,27 +94,28 @@ typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
 CSV_EXTERN csv_t csv_open(csv_config_t config);
 
 /**
- *  Run the scan and invoke callbacks on demand. Return 0 on success, -1 otherwise.
- *  On failure, check for error message in csv->errmsg.
+ *  Run the scan and invoke callbacks on demand. Return 0 on success, -1
+ * otherwise. On failure, check for error message in csv->errmsg.
  */
 CSV_EXTERN int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
-			 csv_perrow_t *perrrow);
+                         csv_perrow_t *perrrow);
 
 /**
- *  Parse a file. This function will call csv_parse(). Return 0 on success, -1 otherwise.
- *  On failure, check for error message in csv->errmsg.
+ *  Parse a file. This function will call csv_parse(). Return 0 on success, -1
+ * otherwise. On failure, check for error message in csv->errmsg.
  *
- *  Note: csv_close() will eventually call on fclose(fp) whether this function succeed or not.
+ *  Note: csv_close() will eventually call on fclose(fp) whether this function
+ * succeed or not.
  */
 CSV_EXTERN int csv_parse_file(csv_t *csv, FILE *fp, void *context,
-			      csv_perrow_t *perrow);
+                              csv_perrow_t *perrow);
 
 /**
- *  Parse a file. This function will call csv_parse(). Return 0 on success, -1 otherwise.
- *  On failure, check for error message in csv->errmsg.
+ *  Parse a file. This function will call csv_parse(). Return 0 on success, -1
+ * otherwise. On failure, check for error message in csv->errmsg.
  */
 CSV_EXTERN int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
-				 csv_perrow_t *perrow);
+                                 csv_perrow_t *perrow);
 
 /**
  *  Close the scan and release resources.
@@ -125,7 +126,7 @@ CSV_EXTERN void csv_close(csv_t *csv);
  *  Unquote a value and return a NUL-terminated string.
  *  This will modify memory area value.ptr[0 .. len+1].
  */
-CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc);
+CSV_EXTERN void csv_unquote(csv_value_t *value, int qte, int esc);
 
 /**
  *  Parse a YYYY-MM-DD. Return 0 on success, -1 otherwise.

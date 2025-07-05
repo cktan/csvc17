@@ -100,7 +100,7 @@ static inline bool finished(const csvx_t *cb) {
 
 static int read_file(void *context, char *buf, int bufsz, char *errmsg,
                      int errsz) {
-  FILE *fp = (FILE*) context;
+  FILE *fp = (FILE *)context;
   int N = fread(buf, 1, bufsz, fp);
   if (ferror(fp)) {
     snprintf(errmsg, errsz, "%s", "cannot read file");
@@ -137,7 +137,8 @@ static int expand_value(csvx_t *cb) {
     return RETERROR(cb, "%s", "buffer overflow");
   }
 
-  csv_value_t *newval = (csv_value_t*) realloc(cb->value.ptr, max * sizeof(*newval));
+  csv_value_t *newval =
+      (csv_value_t *)realloc(cb->value.ptr, max * sizeof(*newval));
   if (!newval) {
     return RETERROR(cb, "%s", "out of memory");
   }
@@ -188,7 +189,7 @@ static int ensure_buf(csvx_t *cb) {
 
   memcpy(newbuf, cb->buf.ptr, N);
   free(cb->buf.ptr);
-  cb->buf.ptr = (char*) newbuf;
+  cb->buf.ptr = (char *)newbuf;
   cb->buf.max = max;
   return 0;
 }
@@ -369,7 +370,7 @@ ENDROW:
 }
 
 int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
-	      csv_perrow_t *perrow) {
+              csv_perrow_t *perrow) {
   if (!csv->ok) {
     assert(csv->errmsg[0]);
     return -1;
@@ -377,7 +378,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   csv->ok = false;
   csv->errmsg[0] = 0;
 
-  csvx_t *cb = (csvx_t*) csv->__internal;
+  csvx_t *cb = (csvx_t *)csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
@@ -388,8 +389,6 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   accept[3] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
   scan_t scan_row = scan_init(accept);
 
-  
-  
   // keep scanning until EOF
   while (!finished(cb)) {
     int N;
@@ -449,7 +448,7 @@ bail:
 csv_t csv_open(csv_config_t conf) {
   csv_t ret;
   memset(&ret, 0, sizeof(ret));
-  csvx_t *cb = (csvx_t*) calloc(1, sizeof(*cb));
+  csvx_t *cb = (csvx_t *)calloc(1, sizeof(*cb));
   if (!cb) {
     snprintf(ret.errmsg, sizeof(ret.errmsg), "%s", "out of memory");
     return ret;
@@ -464,7 +463,7 @@ csv_t csv_open(csv_config_t conf) {
 void csv_close(csv_t *csv) {
   if (csv) {
     if (csv->__internal) {
-      csvx_t *cb = (csvx_t*) csv->__internal;
+      csvx_t *cb = (csvx_t *)csv->__internal;
       free(cb->buf.ptr);
       free(cb->value.ptr);
       if (cb->fp) {
@@ -476,8 +475,7 @@ void csv_close(csv_t *csv) {
   }
 }
 
-int csv_parse_file(csv_t *csv, FILE *fp, void *context,
-		   csv_perrow_t *perrow) {
+int csv_parse_file(csv_t *csv, FILE *fp, void *context, csv_perrow_t *perrow) {
   /* Note: we own fp now. Make sure it closed here or
    * in csv_close(). */
   if (!csv->ok) {
@@ -485,7 +483,7 @@ int csv_parse_file(csv_t *csv, FILE *fp, void *context,
     fclose(fp);
     return -1;
   }
-  csvx_t *cb = (csvx_t*) csv->__internal;
+  csvx_t *cb = (csvx_t *)csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
@@ -499,8 +497,8 @@ int csv_parse_file(csv_t *csv, FILE *fp, void *context,
 }
 
 int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
-                         csv_perrow_t *perrow) {
-  FILE* fp = fopen(path, "r");
+                      csv_perrow_t *perrow) {
+  FILE *fp = fopen(path, "r");
   if (!fp) {
     snprintf(csv->errmsg, sizeof(csv->errmsg), "fopen failed - %s",
              strerror(errno));
@@ -526,21 +524,25 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 /**
  *  Unquote a value and return a NUL-terminated string.
  */
-CSV_EXTERN char *csv_unquote(csv_value_t value, int qte, int esc) {
-  char *p = value.ptr;
-  char *q = p + value.len;
+CSV_EXTERN void csv_unquote(csv_value_t *value, int qte, int esc) {
+  char *p = value->ptr;
+  char *q = p + value->len;
   *q = 0;
   // p is now a NUL terminated string
 
   // if value is not quoted, just return it.
-  if (!value.quoted) {
-    return p;
+  if (!value->quoted) {
+    return;
   }
 
   // fast path for "xxxx", where x != esc
   if (p[0] == qte && q[-1] == qte) {
     if (!memchr(p + 1, esc, q - p - 2)) {
-      return *--q = 0, p + 1;
+      p++;
+      *--q = 0;
+      value->ptr = p;
+      value->len = q - p;
+      return;
     }
   }
 
@@ -550,7 +552,7 @@ UNQUOTED:
   if (p == q) {
     goto DONE;
   }
-  pp = (char*) memchr(p, qte, q - p);
+  pp = (char *)memchr(p, qte, q - p);
   if (!pp) {
     p = q;
     goto DONE;
@@ -562,7 +564,7 @@ UNQUOTED:
   q--;
   assert(*q == 0);
 QUOTED:
-  // TODO: need to speed this up. Need to look for esc or qte 
+  // TODO: need to speed this up. Need to look for esc or qte
   assert(p < q);
   if (p + 1 < q && p[0] == esc && (p[1] == esc || p[1] == qte)) {
     // shift down
@@ -581,7 +583,8 @@ QUOTED:
 
 DONE:
   *p = 0;
-  return begin;
+  value->ptr = begin;
+  value->len = p - begin;
 }
 
 csv_config_t csv_default_config(void) {

@@ -135,7 +135,8 @@ static int perrow(void *context, int n, csv_value_t value[], int64_t lineno,
   (void)errsz;
   printf("    [");
   for (int i = 0; i < n; i++) {
-    const char *ptr = csv_unquote(value[i], QTE, ESC);
+    csv_unquote(&value[i], QTE, ESC);
+    const char *ptr = value[i].ptr;
     assert(ptr);
 
     if (i) {

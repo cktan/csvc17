@@ -20,7 +20,7 @@ struct scan_t {
   const char *p;    // ptr to current token
   const char *q;    // scan ends here
 
-  uint32_t flag;  // bmap marks interesting bits offset from base
+  uint32_t flag; // bmap marks interesting bits offset from base
 };
 
 static int __scan_calcflag(scan_t *scan) {
@@ -45,11 +45,12 @@ static int __scan_calcflag(scan_t *scan) {
   return 0;
 }
 
-static scan_t scan_init(const char* accept) {
+static scan_t scan_init(const char *accept) {
   scan_t scan;
   memset(&scan, 0, sizeof(scan));
   for (int i = 0; i < 4; i++) {
-    if (!accept[i]) break;
+    if (!accept[i])
+      break;
     scan.ch[i] = _mm256_set1_epi8(accept[i]);
     scan.inuse[i] = 1;
   }

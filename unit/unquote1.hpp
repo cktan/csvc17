@@ -13,7 +13,8 @@ static char *unquote(std::string s, bool quoted = true) {
   value.ptr = s.data();
   value.len = s.length();
   value.quoted = quoted;
-  return csv_unquote(value, QTE, ESC);
+  csv_unquote(&value, QTE, ESC);
+  return value.ptr;
 }
 
 TEST_CASE("unquote1") {
