@@ -11,6 +11,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ *  Unquote a value and return a NUL-terminated string.
+ *  This will modify memory area value.ptr[0 .. len+1].
+ */
+static void csv_unquote(csv_value_t *value, int qte, int esc);
+
 #define DO(x)                                                                  \
   if (x)                                                                       \
     return -1;                                                                 \
@@ -424,6 +430,11 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       // Advance the buffer
       cb->buf.bot += scan_row.p - saved_p;
 
+      // Unquote the values
+      for (int i = 0; i < cb->value.top; i++) {
+        csv_unquote(&cb->value.ptr[i], cb->conf.qte, cb->conf.esc);
+      }
+
       // Invoke the callback to process the current row
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,
                  cb->status.rowno, cb->ebuf.ptr, cb->ebuf.len)) {
@@ -524,7 +535,7 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 /**
  *  Unquote a value and return a NUL-terminated string.
  */
-CSV_EXTERN void csv_unquote(csv_value_t *value, int qte, int esc) {
+static void csv_unquote(csv_value_t *value, int qte, int esc) {
   char *p = value->ptr;
   char *q = p + value->len;
   *q = 0;
@@ -542,6 +553,7 @@ CSV_EXTERN void csv_unquote(csv_value_t *value, int qte, int esc) {
       *--q = 0;
       value->ptr = p;
       value->len = q - p;
+      value->quoted = false;
       return;
     }
   }
@@ -585,6 +597,8 @@ DONE:
   *p = 0;
   value->ptr = begin;
   value->len = p - begin;
+  value->quoted = false;
+  return;
 }
 
 csv_config_t csv_default_config(void) {

@@ -123,12 +123,6 @@ CSV_EXTERN int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 CSV_EXTERN void csv_close(csv_t *csv);
 
 /**
- *  Unquote a value and return a NUL-terminated string.
- *  This will modify memory area value.ptr[0 .. len+1].
- */
-CSV_EXTERN void csv_unquote(csv_value_t *value, int qte, int esc);
-
-/**
  *  Parse a YYYY-MM-DD. Return 0 on success, -1 otherwise.
  *  The function does not validate the date values, i.e., day may be 32.
  */
