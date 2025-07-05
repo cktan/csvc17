@@ -1,5 +1,4 @@
 CFLAGS = -std=c17 -fpic -Wmissing-declarations -Wall -Wextra -MMD 
-EXEC = simple simplecpp
 
 ifdef DEBUG
     CFLAGS += -O0 -g
@@ -23,8 +22,8 @@ endif
 
 all: $(EXECS)
 
-driver: driver.cpp ../src/libcsvc17.a
-	$(CXX) $(CXXFLAGS) -o $@ $@.cpp -L ../src -lcsvc17
+driver: driver.cpp 
+	$(CXX) $(CXXFLAGS) -o $@ $@.cpp 
 
 test: all
 	./driver

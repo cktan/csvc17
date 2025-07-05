@@ -100,7 +100,7 @@ static inline bool finished(const csvx_t *cb) {
 
 static int read_file(void *context, char *buf, int bufsz, char *errmsg,
                      int errsz) {
-  FILE *fp = context;
+  FILE *fp = (FILE*) context;
   int N = fread(buf, 1, bufsz, fp);
   if (ferror(fp)) {
     snprintf(errmsg, errsz, "%s", "cannot read file");
@@ -137,7 +137,7 @@ static int expand_value(csvx_t *cb) {
     return RETERROR(cb, "%s", "buffer overflow");
   }
 
-  csv_value_t *newval = realloc(cb->value.ptr, max * sizeof(*newval));
+  csv_value_t *newval = (csv_value_t*) realloc(cb->value.ptr, max * sizeof(*newval));
   if (!newval) {
     return RETERROR(cb, "%s", "out of memory");
   }
@@ -188,7 +188,7 @@ static int ensure_buf(csvx_t *cb) {
 
   memcpy(newbuf, cb->buf.ptr, N);
   free(cb->buf.ptr);
-  cb->buf.ptr = newbuf;
+  cb->buf.ptr = (char*) newbuf;
   cb->buf.max = max;
   return 0;
 }
@@ -265,7 +265,8 @@ STARTVAL:
     return 0;
   }
 
-  csv_value_t value = {0};
+  csv_value_t value;
+  memset(&value, 0, sizeof(value));
   value.ptr = (char *)p;
   goto UNQUOTED;
 
@@ -376,7 +377,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   csv->ok = false;
   csv->errmsg[0] = 0;
 
-  csvx_t *cb = csv->__internal;
+  csvx_t *cb = (csvx_t*) csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
@@ -446,8 +447,9 @@ bail:
 }
 
 csv_t csv_open(csv_config_t conf) {
-  csv_t ret = {0};
-  csvx_t *cb = calloc(1, sizeof(*cb));
+  csv_t ret;
+  memset(&ret, 0, sizeof(ret));
+  csvx_t *cb = (csvx_t*) calloc(1, sizeof(*cb));
   if (!cb) {
     snprintf(ret.errmsg, sizeof(ret.errmsg), "%s", "out of memory");
     return ret;
@@ -462,7 +464,7 @@ csv_t csv_open(csv_config_t conf) {
 void csv_close(csv_t *csv) {
   if (csv) {
     if (csv->__internal) {
-      csvx_t *cb = csv->__internal;
+      csvx_t *cb = (csvx_t*) csv->__internal;
       free(cb->buf.ptr);
       free(cb->value.ptr);
       if (cb->fp) {
@@ -483,7 +485,7 @@ int csv_parse_file(csv_t *csv, FILE *fp, void *context,
     fclose(fp);
     return -1;
   }
-  csvx_t *cb = csv->__internal;
+  csvx_t *cb = (csvx_t*) csv->__internal;
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
@@ -548,7 +550,7 @@ UNQUOTED:
   if (p == q) {
     goto DONE;
   }
-  pp = memchr(p, qte, q - p);
+  pp = (char*) memchr(p, qte, q - p);
   if (!pp) {
     p = q;
     goto DONE;
@@ -583,7 +585,8 @@ DONE:
 }
 
 csv_config_t csv_default_config(void) {
-  csv_config_t conf = {0};
+  csv_config_t conf;
+  memset(&conf, 0, sizeof(conf));
   conf.qte = '"';
   conf.esc = '"';
   conf.delim = ',';
