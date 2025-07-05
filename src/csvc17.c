@@ -380,13 +380,16 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
-  // keep scanning until EOF
   char accept[5] = {0};
   accept[0] = cb->conf.qte;
   accept[1] = cb->conf.delim;
   accept[2] = '\n';
   accept[3] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
-  scan_t scan = scan_init(accept);
+  scan_t scan_row = scan_init(accept);
+
+  
+  
+  // keep scanning until EOF
   while (!finished(cb)) {
     int N;
     if (!cb->eof) {
@@ -398,16 +401,16 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     }
 
     // Set up a scan of the cb->buf[]
-    scan_reset(&scan, cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
-    assert(scan.p <= scan.q);
+    scan_reset(&scan_row, cb->buf.ptr + cb->buf.bot, cb->buf.top - cb->buf.bot);
+    assert(scan_row.p <= scan_row.q);
 
     // Scan buf[] row by row
     for (;;) {
       status_t saved_status = cb->status;
-      const char *saved_p = scan.p;
+      const char *saved_p = scan_row.p;
 
       // Get one row
-      N = onerow(&scan, cb);
+      N = onerow(&scan_row, cb);
       if (N < 0) {
         goto bail;
       }
@@ -419,7 +422,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       assert(N == 1);
 
       // Advance the buffer
-      cb->buf.bot += scan.p - saved_p;
+      cb->buf.bot += scan_row.p - saved_p;
 
       // Invoke the callback to process the current row
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,

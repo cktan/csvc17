@@ -38,6 +38,7 @@
 
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
+  bool unquote_values; /* default true; */
   int qte;       /* default double-quote */
   int esc;       /* default double-quote */
   int delim;     /* default comma */

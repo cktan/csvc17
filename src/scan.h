@@ -3,6 +3,10 @@
 #include <string.h>
 #include <x86intrin.h>
 
+/**
+ *  This is a scanner that uses SIMD to locate the next interesting
+ *  char in an array of bytes. Supports up to 4 interesting chars.
+ */
 typedef struct scan_t scan_t;
 struct scan_t {
   // for alignment
@@ -67,8 +71,6 @@ static void __scan_forward(scan_t *scan) {
       break;
   }
 }
-
-static inline const char *scan_peek(scan_t *scan) { return scan->p; }
 
 static inline const char *scan_next(scan_t *scan) {
   if (!scan->flag) {
