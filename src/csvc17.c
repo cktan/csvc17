@@ -215,7 +215,7 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
    |               v       newline
    +----------- [ENDVAL]    |
    |                        |
-   +------- [ENDROW] -------+
+   +------- [ENDROW]<-------+
 
 */
 // Scan one row. Return 1 on success, 0 if there are not enough data
@@ -248,76 +248,66 @@ STARTVAL:
 
 UNQUOTED:
   pp = scan_next(scan);
-  // ch in [0, \n, delim, qte, or esc]
   ch = pp ? *pp : 0;
-  if (ch == qte) {
+  // ch in [0, \n, delim, qte, or esc]
+  if (ch == 0) {
+    // out of data...
+    assert(ch == 0);
+    if (cb->eof) {
+      return RETERROR(cb, "%s", "unterminated row");
+    }
+    return 0;
+  }
+  
+  if (ch == qte) 
     goto QUOTED;
-  }
-  if (ch == delim) {
+  if (ch == delim) 
     goto ENDVAL;
-  }
-  if (ch == '\n') {
+  if (ch == '\n') 
     goto ENDROW;
-  }
-  if (ch == esc) {
+  if (ch == esc) 
     goto UNQUOTED; // esc in an unquoted field: ignore.
-  }
-  assert(ch == 0);
-  if (cb->eof) {
-    return RETERROR(cb, "%s", "unterminated row");
-  }
-  return 0;
+
+  assert(0);
+  return RETERROR(cb, "%s", "internal error");
 
 QUOTED:
   value.quoted = 1;
   pp = scan_next(scan);
-  // ch in [0, \n, delim, qte, or esc]
   ch = pp ? *pp : 0;
-
-  if (ch == qte || ch == esc) {
-
-    // CASE WHEN esc == qte
-    if (qte == esc) {
-      // If two quotes: pop and continue in QUOTED state.
-      if (scan_match(scan, qte)) {
-        (void)scan_next(scan);
-        goto QUOTED;
-      }
-      // If one quote: exit QUOTED state, continue in UNQUOTED state.
-      goto UNQUOTED;
-    }
-
-    // CASE WHEN esc != qte
-    if (ch == qte) {
-      // the quote was not escaped, so we exit QUOTED state.
-      goto UNQUOTED;
-    }
-
-    assert(ch == esc);
-    // here, ch is esc and we have either eq, ee, or ex.
-    // for eq or ee, escape one char and continue in QUOTED state.
-    // for ex, do nothing and continue in QUOTED state.
-    if (scan_match(scan, qte) || scan_match(scan, esc)) {
-      // for eq or ee, eat the escaped char.
-      (void)scan_next(scan);
-      goto QUOTED;
-    }
-    goto QUOTED;
-  }
-
-  if (!ch) {
+  // ch in [0, \n, delim, qte, or esc]
+  if (ch == 0) {
+    // out of data...
+    assert(ch == 0);
     if (cb->eof) {
       return RETERROR(cb, "%s", "unterminated quote");
     }
     return 0;
   }
-
-  // still in quote
-  assert(ch == '\n' || ch == delim);
   if (ch == '\n') {
     cb->status.lineno++;
+    goto QUOTED;
   }
-  goto QUOTED;
+  if (ch == delim) {
+    goto QUOTED;
+  }
+
+  // eq or ee: escape the next char
+  if (ch == esc && (scan_match(scan, esc) || scan_match(scan, qte))) {
+    (void) scan_next(scan);  // escaped
+    goto QUOTED;
+  }
+
+  // q: exit QUOTED state
+  if (ch == qte) 
+    goto UNQUOTED; 
+
+  // ex: continue in QUOTED state
+  if (ch == esc) 
+    goto QUOTED;
+
+  assert(0);
+  return RETERROR(cb, "%s", "internal error");
 
 ENDVAL:
   // record the val
