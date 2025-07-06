@@ -51,7 +51,6 @@ static int perrow(void *ctx_, int n, csv_value_t value[], int64_t lineno,
   std::vector<std::string> row;
   row.resize(n);
   for (int i = 0; i < n; i++) {
-    csv_unquote(&value[i], ctx->QTE, ctx->ESC);
     char *p = value[i].ptr;
     if (!p) {
       fprintf(stderr, "Internal error!");

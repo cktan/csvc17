@@ -15,7 +15,7 @@
  *  Unquote a value and return a NUL-terminated string.
  *  This will modify memory area value.ptr[0 .. len+1].
  */
-static void csv_unquote(csv_value_t *value, int qte, int esc);
+static void unquote(csv_value_t *value, int qte, int esc);
 
 #define DO(x)                                                                  \
   if (x)                                                                       \
@@ -431,8 +431,10 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       cb->buf.bot += scan_row.p - saved_p;
 
       // Unquote the values
-      for (int i = 0; i < cb->value.top; i++) {
-        csv_unquote(&cb->value.ptr[i], cb->conf.qte, cb->conf.esc);
+      if (cb->conf.unquote_values) {
+        for (int i = 0; i < cb->value.top; i++) {
+          unquote(&cb->value.ptr[i], cb->conf.qte, cb->conf.esc);
+        }
       }
 
       // Invoke the callback to process the current row
@@ -535,7 +537,7 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 /**
  *  Unquote a value and return a NUL-terminated string.
  */
-static void csv_unquote(csv_value_t *value, int qte, int esc) {
+static void unquote(csv_value_t *value, int qte, int esc) {
   char *p = value->ptr;
   char *q = p + value->len;
   *q = 0;
@@ -604,6 +606,7 @@ DONE:
 csv_config_t csv_default_config(void) {
   csv_config_t conf;
   memset(&conf, 0, sizeof(conf));
+  conf.unquote_values = true;
   conf.qte = '"';
   conf.esc = '"';
   conf.delim = ',';

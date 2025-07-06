@@ -16,9 +16,8 @@
  *  needs more data.
  *
  *  The per-row function will be invoked whenever a row is
- *  determined. In the per-row function, call csv_unquote to normalize
- *  the values into proper strings. Utility functions to parse date,
- *  time, and timestamp are also provided.
+ *  determined. Utility functions to parse date, time, and timestamp
+ *  are also provided.
  *
  *  C++ Note: If the callback functions may potentially throw
  *  exceptions, make sure to catch the exception and call csv_close()
@@ -54,8 +53,7 @@ struct csv_t {
 };
 
 /**
- *  A cell in the CSV file. If the value is quoted, call csv_unquote to obtain
- *  a NUL-terminated string.
+ *  A cell in the CSV file.
  */
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
@@ -76,8 +74,6 @@ typedef int csv_feed_t(void *context, char *buf, int bufsz, char *errbuf,
  *  This callback is invoked per row.  Return 0 on success,
  *  -1 otherwise. If you return -1, be sure to write an error message
  *  into errbuf[] using lineno and rowno.
- *
- *  For each csv_value, call csv_unquote() to obtain a NUL-terminated string.
  */
 typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
                          int64_t lineno, int64_t rowno, char *errbuf,
