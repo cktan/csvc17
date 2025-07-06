@@ -1,13 +1,13 @@
-input|expected|description
-abcd|abcd|simple
-ab"c"d|abcd|quoted string in the midst of unquoted string
-ab""c"d"|abcd|two quoted strings in the midst of unquoted string
-ab\cd|ab{backslash}cd|escape is ignored when not in quotes
-ab\\cd|ab{backslash}{backslash}cd|escape is ignored when not in quotes
-ab\"cd"|ab{backslash}cd|escape is ignored when not in quotes
-"abcd"|abcd|simple quoted string
-"ab\"cd"|ab{quote}cd|the quote is escaped
-"ab\\cd"|ab{backslash}cd|the backslash is escaped
-"ab\cd"|ab{backslash}cd|escape is ignored because c is neither backslash nor quote
-"ab""cd"|abcd|inquote, out of quote, back in quote
-"ab"-"cd"|ab-cd|inquote, out of quote, back in quote
+id|input|expected|description
+1|abcd|abcd|simple
+2|ab"c"d|abcd|quoted string in the midst of unquoted string
+3|ab""c"d"|abcd|two quoted strings in the midst of unquoted string
+4|ab\cd|ab{backslash}cd|escape is ignored when not in quotes
+5|ab\\cd|ab{backslash}{backslash}cd|escape is ignored when not in quotes
+6|ab\"cd"|ab{backslash}cd|escape is ignored when not in quotes
+7|"abcd"|abcd|simple quoted string
+8|"ab\"cd"|ab{quote}cd|the quote is escaped
+9|"ab\\cd"|ab{backslash}cd|the backslash is escaped
+10|"ab\cd"|ab{backslash}cd|escape is ignored because c is neither backslash nor quote
+11|"ab""cd"|abcd|inquote, out of quote, back in quote
+12|"ab"-"cd"|ab-cd|inquote, out of quote, back in quote
