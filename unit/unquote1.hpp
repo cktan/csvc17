@@ -6,13 +6,21 @@
 
 using namespace std;
 
-static char *unquote(std::string s, bool quoted = true) {
+static char *do_unquote(std::string s, bool quoted = true) {
   static csv_config_t conf = csv_default_config();
+  char accept[3];
+  {
+    int i = 0;
+    accept[i++] = conf.qte;
+    accept[i++] = (conf.esc != conf.qte ? conf.esc : 0);
+    accept[i] = 0;
+  }
+  scan_t scan = scan_init(accept);
   csv_value_t value;
   value.ptr = s.data();
   value.len = s.length();
   value.quoted = quoted;
-  unquote(&value, &conf);
+  unquote(&scan, &value, &conf);
   return value.ptr;
 }
 
@@ -25,14 +33,14 @@ TEST_CASE("unquote1") {
   SUBCASE("nop") {
     {
       string raw = "an unquoted string";
-      string v = unquote(raw, false);
+      string v = do_unquote(raw, false);
       CHECK(v == raw);
     }
 
     {
       string raw = "";
       // this is a NULL, not an empty string.
-      CHECK(nullptr == unquote(raw, false));
+      CHECK(nullptr == do_unquote(raw, false));
     }
   }
 
@@ -40,20 +48,20 @@ TEST_CASE("unquote1") {
     // this just return the string without the quotes
     {
       string raw = "\"hello there\"";
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "hello there");
     }
 
     {
       string raw = "\"a\"";
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "a");
     }
 
     {
       string raw = "\"\"";
       // this is an empty string, not a NULL.
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "");
     }
   }
@@ -62,13 +70,13 @@ TEST_CASE("unquote1") {
     {
       string raw = "\"abcd\"\"efg\"";
       // input: "abcd""efg".  output: abcd"efg
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "abcd\"efg");
     }
 
     {
       string raw = "\"w\"\"x\"\"\""; // "w""x"""
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "w\"x\"");
     }
   }
@@ -76,7 +84,7 @@ TEST_CASE("unquote1") {
   SUBCASE("multiline") {
     {
       string raw = "\"abcd\n\n\n\n\nefg\"";
-      string v = unquote(raw);
+      string v = do_unquote(raw);
       CHECK(v == "abcd\n\n\n\n\nefg");
     }
   }

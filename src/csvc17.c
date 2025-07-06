@@ -2,6 +2,7 @@
  * https://github.com/cktan/csvc17/blob/main/LICENSE
  */
 #include "csvc17.h"
+#include "scan.h"
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -15,55 +16,13 @@
  *  Unquote a value and return a NUL-terminated string.
  *  This will modify memory area value.ptr[0 .. len+1].
  */
-static void unquote(csv_value_t *value, const csv_config_t *conf);
+static void unquote(scan_t *scan, csv_value_t *value, const csv_config_t *conf);
 
 #define DO(x)                                                                  \
   if (x)                                                                       \
     return -1;                                                                 \
   else                                                                         \
     (void)0
-
-#if 0
-typedef struct scan_t scan_t;
-struct scan_t {
-  char *p;
-  char *q;
-  int qte, esc, delim; // special chars
-};
-
-static scan_t scan_reset(int qte, int esc, int delim, char *buf,
-                         int64_t buflen) {
-  scan_t scan = {0};
-  scan.qte = qte;
-  scan.esc = esc;
-  scan.delim = delim;
-  scan.p = buf;
-  scan.q = buf + buflen;
-  return scan;
-}
-
-// Get ptr to the next special char. After this call, p points
-// to the char after the special char.
-static char *scan_next(scan_t *sc) {
-  for (; sc->p < sc->q; sc->p++) {
-    int ch = *sc->p;
-    if (ch == sc->delim || ch == '\n' || ch == sc->qte || ch == sc->esc) {
-      return sc->p++;
-    }
-  }
-  return NULL;
-}
-
-/* get ptr to the current char */
-static char *scan_peek(scan_t *sc) { return sc->p; }
-
-static inline int scan_match(scan_t* scan, int ch) {
-  return ch == *scan->p;
-}
-
-#else
-#include "scan.h"
-#endif
 
 typedef struct ebuf_t ebuf_t;
 struct ebuf_t {
@@ -388,12 +347,25 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
   cb->ebuf.ptr = csv->errmsg;
   cb->ebuf.len = sizeof(csv->errmsg);
 
+  // Set up the scan on rows. Special chars are qte, esc, delim, and newline.
   char accept[5] = {0};
-  accept[0] = cb->conf.qte;
-  accept[1] = cb->conf.delim;
-  accept[2] = '\n';
-  accept[3] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
+  {
+    int i = 0;
+    accept[i++] = cb->conf.qte;
+    accept[i++] = cb->conf.delim;
+    accept[i++] = '\n';
+    accept[i++] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
+  }
   scan_t scan_row = scan_init(accept);
+
+  // Set up the scan for unquote. Special chars are qte and esc only.
+  {
+    int i = 0;
+    accept[i++] = cb->conf.qte;
+    accept[i++] = (cb->conf.qte != cb->conf.esc) ? cb->conf.esc : 0;
+    accept[i++] = 0;
+  }
+  scan_t scan_unquote = scan_init(accept);
 
   // keep scanning until EOF
   while (!finished(cb)) {
@@ -433,7 +405,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       // Unquote the values
       if (cb->conf.unquote_values) {
         for (int i = 0; i < cb->value.top; i++) {
-          unquote(&cb->value.ptr[i], &cb->conf);
+          unquote(&scan_unquote, &cb->value.ptr[i], &cb->conf);
         }
       }
 
@@ -537,7 +509,8 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 /**
  *  Unquote a value and return a NUL-terminated string.
  */
-static void unquote(csv_value_t *value, const csv_config_t *conf) {
+static void unquote(scan_t *scan, csv_value_t *value,
+                    const csv_config_t *conf) {
   int qte = conf->qte;
   int esc = conf->esc;
   int nullsz = strlen(conf->nullstr);
@@ -549,7 +522,8 @@ static void unquote(csv_value_t *value, const csv_config_t *conf) {
   // if value is not quoted, just return it.
   if (!value->quoted) {
     // check for NULL
-    if (value->len == nullsz && 0 == strcmp(value->ptr, conf->nullstr)) {
+    if (value->len == nullsz &&
+        0 == memcmp(value->ptr, conf->nullstr, nullsz)) {
       value->ptr = 0;
       value->len = 0;
     }
@@ -570,37 +544,53 @@ static void unquote(csv_value_t *value, const csv_config_t *conf) {
 
   char *begin = p;
   char *pp;
+  scan_reset(scan, p, q - p);
 UNQUOTED:
   if (p == q) {
     goto DONE;
   }
-  pp = (char *)memchr(p, qte, q - p);
+  pp = (char *)scan_next(scan);
   if (!pp) {
     p = q;
     goto DONE;
   }
-  // here: *pp == qte
-  // shift down, and go into QUOTED mode
-  p = pp;
-  memmove(p, p + 1, q - p);
-  q--;
-  assert(*q == 0);
-QUOTED:
-  // TODO: need to speed this up. Need to look for esc or qte
-  assert(p < q);
-  if (p + 1 < q && p[0] == esc && (p[1] == esc || p[1] == qte)) {
-    // shift down
-    memmove(p, p + 1, q - p);
+  // q
+  if (*pp == qte) {
+    // shift down, and go into QUOTED mode
+    memmove(pp, pp + 1, q - pp);
     q--;
-    p++;
+    assert(*q == 0);
+    p = pp;
+    scan_reset(scan, p, q - p);
     goto QUOTED;
   }
-  if (*p == qte) {
-    memmove(p, p + 1, q - p);
+  // ignore this char
+  p = pp + 1;
+  goto UNQUOTED;
+
+QUOTED:
+  assert(p < q);
+  pp = (char *)scan_next(scan);
+  assert(pp);
+  // eq or ee
+  if (pp[0] == esc && (pp[1] == esc || pp[1] == qte)) {
+    // shift down
+    memmove(pp, pp + 1, q - pp);
     q--;
+    p = pp + 1;
+    scan_reset(scan, p, q - p);
+    goto QUOTED;
+  }
+  // q
+  if (*pp == qte) {
+    memmove(pp, pp + 1, q - pp);
+    q--;
+    p = pp;
+    scan_reset(scan, p, q - p);
     goto UNQUOTED;
   }
-  p++;
+  // ignore this char
+  p = pp + 1;
   goto QUOTED;
 
 DONE:
