@@ -24,12 +24,14 @@ static void unquote(scan_t *scan, csv_value_t *value, const csv_config_t *conf);
   else                                                                         \
     (void)0
 
+// Error buffer
 typedef struct ebuf_t ebuf_t;
 struct ebuf_t {
   char *ptr;
   int len;
 };
 
+// Keeps track of counters
 typedef struct status_t status_t;
 struct status_t {
   int64_t lineno; // current line number
@@ -37,6 +39,7 @@ struct status_t {
   // note: current column number is (csvx_t::value.top + 1)
 };
 
+// Control block
 typedef struct csvx_t csvx_t;
 struct csvx_t {
   ebuf_t ebuf; // error buffer
@@ -45,16 +48,21 @@ struct csvx_t {
   status_t status;
   csv_config_t conf;
 
+  // buf[] stores the raw text to be parsed. Feed() will
+  // copy into the buf[].
   struct {
     char *ptr; // buf of size max where [bot..top) is valid
     int bot, top, max;
   } buf;
 
+  // value[] stores each value of a row. Appended by onerow().
+  // Will be sent to perrow().
   struct {
     csv_value_t *ptr; // value[0..top) are valid
     int top, max;
   } value;
 
+  // This is a hack for csv_parse_file().
   FILE *fp; // file ptr if not NULL
 };
 
@@ -63,6 +71,7 @@ static inline bool finished(const csvx_t *cb) {
   return cb->eof && (cb->buf.bot == cb->buf.top);
 }
 
+// Read from a file into buf[]. Used by csv_parse_file().
 static int read_file(void *context, char *buf, int bufsz, char *errmsg,
                      int errsz) {
   FILE *fp = (FILE *)context;
@@ -209,8 +218,9 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
    +------- [ENDROW] -------+
 
 */
-// Scan one row. Return #rows scanned, or -1 on error.
-// This call will corrupt cb->status on error.
+// Scan one row. Return 1 on success, 0 if there are not enough data
+// to make a row, or -1 on error.  This call will corrupt cb->status
+// on error.
 static int onerow(scan_t *scan, csvx_t *cb) {
   const char esc = cb->conf.esc;
   const char qte = cb->conf.qte;
@@ -303,10 +313,10 @@ QUOTED:
   }
 
   // still in quote
+  assert(ch == '\n' || ch == delim);
   if (ch == '\n') {
     cb->status.lineno++;
   }
-  assert(ch == '\n' || ch == delim);
   goto QUOTED;
 
 ENDVAL:
@@ -508,6 +518,7 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 */
 /**
  *  Unquote a value and return a NUL-terminated string.
+ *  This will modify memory area value.ptr[0 .. len+1].
  */
 static void unquote(scan_t *scan, csv_value_t *value,
                     const csv_config_t *conf) {
