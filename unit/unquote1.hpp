@@ -7,13 +7,12 @@
 using namespace std;
 
 static char *unquote(std::string s, bool quoted = true) {
-  const int QTE = '"';
-  const int ESC = '"';
+  static csv_config_t conf = csv_default_config();
   csv_value_t value;
   value.ptr = s.data();
   value.len = s.length();
   value.quoted = quoted;
-  unquote(&value, QTE, ESC);
+  unquote(&value, &conf);
   return value.ptr;
 }
 
@@ -32,8 +31,8 @@ TEST_CASE("unquote1") {
 
     {
       string raw = "";
-      string v = unquote(raw, false);
-      CHECK(v == raw);
+      // this is a NULL, not an empty string.
+      CHECK(nullptr == unquote(raw, false));
     }
   }
 
@@ -53,6 +52,7 @@ TEST_CASE("unquote1") {
 
     {
       string raw = "\"\"";
+      // this is an empty string, not a NULL.
       string v = unquote(raw);
       CHECK(v == "");
     }

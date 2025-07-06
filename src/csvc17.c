@@ -15,7 +15,7 @@
  *  Unquote a value and return a NUL-terminated string.
  *  This will modify memory area value.ptr[0 .. len+1].
  */
-static void unquote(csv_value_t *value, int qte, int esc);
+static void unquote(csv_value_t *value, const csv_config_t *conf);
 
 #define DO(x)                                                                  \
   if (x)                                                                       \
@@ -433,7 +433,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       // Unquote the values
       if (cb->conf.unquote_values) {
         for (int i = 0; i < cb->value.top; i++) {
-          unquote(&cb->value.ptr[i], cb->conf.qte, cb->conf.esc);
+          unquote(&cb->value.ptr[i], &cb->conf);
         }
       }
 
@@ -537,7 +537,10 @@ int csv_parse_file_ex(csv_t *csv, const char *path, void *context,
 /**
  *  Unquote a value and return a NUL-terminated string.
  */
-static void unquote(csv_value_t *value, int qte, int esc) {
+static void unquote(csv_value_t *value, const csv_config_t *conf) {
+  int qte = conf->qte;
+  int esc = conf->esc;
+  int nullsz = strlen(conf->nullstr);
   char *p = value->ptr;
   char *q = p + value->len;
   *q = 0;
@@ -545,6 +548,11 @@ static void unquote(csv_value_t *value, int qte, int esc) {
 
   // if value is not quoted, just return it.
   if (!value->quoted) {
+    // check for NULL
+    if (value->len == nullsz && 0 == strcmp(value->ptr, conf->nullstr)) {
+      value->ptr = 0;
+      value->len = 0;
+    }
     return;
   }
 

@@ -38,6 +38,7 @@
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
   bool unquote_values; /* default true; */
+  char nullstr[16];    /* what is NULL? default '' */
   int qte;             /* default double-quote */
   int esc;             /* default double-quote */
   int delim;           /* default comma */
@@ -57,7 +58,7 @@ struct csv_t {
  */
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
-  char *ptr;
+  char *ptr; // for NULL, ptr will be nullptr.
   int len;
   bool quoted;
 };

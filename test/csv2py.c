@@ -136,13 +136,12 @@ static int perrow(void *context, int n, csv_value_t value[], int64_t lineno,
   printf("    [");
   for (int i = 0; i < n; i++) {
     const char *ptr = value[i].ptr;
-    assert(ptr);
 
     if (i) {
       printf(", ");
     }
 
-    if (0 == strcmp(NULLSTR, ptr)) {
+    if (!ptr) {
       printf("None");
     } else if (special(ptr)) {
       printf("r'''%s'''", ptr);
@@ -167,6 +166,7 @@ int main(int argc, char *argv[]) {
   }
 
   csv_config_t conf = csv_default_config();
+  strcpy(conf.nullstr, NULLSTR);
   conf.qte = QTE;
   conf.esc = ESC;
   conf.delim = DELIM;
