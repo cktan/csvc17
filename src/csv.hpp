@@ -1,9 +1,21 @@
+#pragma once
+
 #include "csvc17.h"
 
 /**
  * Note: in this implementation of csv_parer_t, the context to the callback functions is always
  * a pointer to the csv_parser_t itself. User can create a subclass of csv_parser_t and put
  * relevant context variables in the subclass for feed and perrow callback functions.
+ *
+ * USAGE:
+ *
+ *   csv_parser_t p;
+ *   p.set_delim() etc
+ *   p.parse([](...) {...}, // feed
+ *	     [](...) {...}  // perrow
+ *           );
+ *   CHECK(p.ok());
+ *   // done
  */
 
 class csv_parser_t {
