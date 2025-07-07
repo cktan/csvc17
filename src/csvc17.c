@@ -204,9 +204,9 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
   e: escape
   q: quote
 
-                  +--------- q ---------+
-                  |                     |
-                  v                     |
+                    +-------- q ---------+
+                    |                    |
+                    v                    |
 [STARTVAL] ----> [UNQUOTED] --- q ---> [QUOTED] ----------+
    ^               |    \                  ^              |
    |               |     \                 |              |
@@ -214,8 +214,8 @@ static int fill_buf(csvx_t *cb, void *context, csv_feed_t *feed) {
    |               |       \
    |               v       newline
    +----------- [ENDVAL]    |
-   |                        |
-   +------- [ENDROW]<-------+
+                            v
+                         [ENDROW] (done)
 
 */
 // Scan one row. Return 1 on success, 0 if there are not enough data
@@ -311,7 +311,7 @@ QUOTED:
 
 ENDVAL:
   // record the val
-  value.len = pp - p;
+  value.len = pp - value.ptr;
   DO(ensure_value(cb));
   cb->value.ptr[cb->value.top++] = value;
 
