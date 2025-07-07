@@ -21,6 +21,7 @@ public:
     offset = 0;
   }
 
+  // add a row into result[]
   static int perrow(void *ctx, int n, csv_value_t value[], int64_t lineno,
                     int64_t rowno, char *errbuf, int errsz) {
     parser_t *p = (parser_t *)ctx;
@@ -37,6 +38,7 @@ public:
     return 0;
   }
 
+  // consume bytes of input[]
   static int feed(void *ctx, char *buf, int bufsz, char *errbuf, int errsz) {
     parser_t *p = (parser_t *)ctx;
     (void)errbuf;
