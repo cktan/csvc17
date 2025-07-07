@@ -34,6 +34,14 @@ static int __scan_calcflag(scan_t *scan) {
     memcpy(scan->tmpbuf, base, len);
     base = scan->tmpbuf;
   }
+#ifdef ALIGNED_LOAD
+  // don't need this on x86
+  else if (((intptr_t)base) & 0xf) {
+    memcpy(scan->tmpbuf, base, 32);
+    base = scan->tmpbuf;
+  }
+#endif
+    
 
   __m256i src = _mm256_loadu_si256((__m256i *)base);
   scan->flag = _mm256_movemask_epi8(_mm256_cmpeq_epi8(src, scan->ch[0]));
