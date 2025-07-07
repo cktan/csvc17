@@ -1,5 +1,11 @@
 #include "csvc17.h"
 
+/**
+ * Note: in this implementation of csv_parer_t, the context to the callback functions is always
+ * a pointer to the csv_parser_t itself. User can create a subclass of csv_parser_t and put
+ * relevant context variables in the subclass for feed and perrow callback functions.
+ */
+
 class csv_parser_t {
 private:
   void reset() {
@@ -7,9 +13,10 @@ private:
       csv_close(&m_csv);
       m_csv = {};
     }
-    m_csv = csv_open(m_conf);
+    m_csv = csv_open(&m_conf);
   }
 public:
+  csv_parser_t() {}
   ~csv_parser_t() { csv_close(&m_csv); }
 
   csv_parser_t(csv_parser_t&) = delete;
@@ -35,7 +42,7 @@ public:
   }
   csv_parser_t& set_nullstr(std::string_view nullstr) {
     int sz = nullstr.size();
-    if (sz >= sizeof(m_conf.nullstr) - 1) {
+    if (sz >= (int)sizeof(m_conf.nullstr) - 1) {
       sz = sizeof(m_conf.nullstr) - 1;
     }
     std::memcpy(m_conf.nullstr, nullstr.data(), sz);
@@ -58,7 +65,7 @@ public:
   }
   bool parse_file(std::string_view path, csv_perrow_t* perrow) {
     reset();
-    return 0 == csv_parse_file_ex(&m_csv, path, this, perrow);
+    return 0 == csv_parse_file_ex(&m_csv, path.data(), this, perrow);
   }
   bool parse(csv_feed_t* feed, csv_perrow_t* perrow) {
     reset();

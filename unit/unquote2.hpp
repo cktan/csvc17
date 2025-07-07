@@ -1,11 +1,6 @@
 #pragma once
 
-extern "C" {
-#include "../src/csvc17.h"
-}
-
 #include <algorithm>
-#include <cstring>
 #include <random>
 #include <vector>
 

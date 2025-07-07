@@ -1,9 +1,5 @@
 #pragma once
 
-#include "../src/csvc17.h"
-
-#include <cstring>
-
 using namespace std;
 
 static char *do_unquote(std::string s, bool quoted = true) {

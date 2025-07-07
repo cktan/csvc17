@@ -1,11 +1,5 @@
 #pragma once
 
-extern "C" {
-#include "../src/scan.h"
-}
-
-#include <cstring>
-
 using namespace std;
 
 TEST_CASE("scan1") {

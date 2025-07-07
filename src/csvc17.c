@@ -258,14 +258,14 @@ UNQUOTED:
     }
     return 0;
   }
-  
-  if (ch == qte) 
+
+  if (ch == qte)
     goto QUOTED;
-  if (ch == delim) 
+  if (ch == delim)
     goto ENDVAL;
-  if (ch == '\n') 
+  if (ch == '\n')
     goto ENDROW;
-  if (ch == esc) 
+  if (ch == esc)
     goto UNQUOTED; // esc in an unquoted field: ignore.
 
   assert(0);
@@ -294,16 +294,16 @@ QUOTED:
 
   // eq or ee: escape the next char
   if (ch == esc && (scan_match(scan, esc) || scan_match(scan, qte))) {
-    (void) scan_next(scan);  // escaped
+    (void)scan_next(scan); // escaped
     goto QUOTED;
   }
 
   // q: exit QUOTED state
-  if (ch == qte) 
-    goto UNQUOTED; 
+  if (ch == qte)
+    goto UNQUOTED;
 
   // ex: continue in QUOTED state
-  if (ch == esc) 
+  if (ch == esc)
     goto QUOTED;
 
   assert(0);
@@ -430,7 +430,7 @@ bail:
   return -1;
 }
 
-csv_t csv_open(const csv_config_t* conf) {
+csv_t csv_open(const csv_config_t *conf) {
   csv_t ret;
   memset(&ret, 0, sizeof(ret));
   csvx_t *cb = (csvx_t *)calloc(1, sizeof(*cb));

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../src/csvc17.h"
-
 using namespace std;
 
 TEST_CASE("datetime1") {

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "../src/csvc17.h"
-#include <cstring>
-
 using namespace std;
 
 namespace csv1 {

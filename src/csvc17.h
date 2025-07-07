@@ -89,7 +89,7 @@ typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
  *  exceptions (or longjmp) being thrown inside the callback routines during
  *  parse() operation.
  */
-CSV_EXTERN csv_t csv_open(const csv_config_t* conf);
+CSV_EXTERN csv_t csv_open(const csv_config_t *conf);
 
 /**
  *  Run the scan and invoke callbacks on demand. Return 0 on success, -1
