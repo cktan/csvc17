@@ -316,8 +316,6 @@ ENDVAL:
   cb->value.ptr[cb->value.top++] = value;
 
   // start next val
-  p = pp + 1;
-
   goto STARTVAL;
 
 ENDROW:
@@ -395,14 +393,16 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       if (N == 0) {
         // Insufficient data in cb->buf[] to fill one row
         cb->status = saved_status; // rollback the status
+                                   // Break out of inner loop. Continue outer
+                                   // loop to fill buffer and retry.
         break;
       }
-      assert(N == 1);
 
-      // Advance the buffer
+      // Got a value! Advance the buffer.
+      assert(N == 1);
       cb->buf.bot += scan_row.p - saved_p;
 
-      // Unquote the values
+      // Unquote the values.
       if (cb->conf.unquote_values) {
         for (int i = 0; i < cb->value.top; i++) {
           unquote(&scan_unquote, &cb->value.ptr[i], &cb->conf);
