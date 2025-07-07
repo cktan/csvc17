@@ -62,11 +62,21 @@ TEST_CASE("cpp1") {
 
   SUBCASE("open and shut") {
     parser_t p;
-    p.set_input("a|b|c");
     p.set_delim('|');
+    p.set_input("a|b|c");
     p.parse(parser_t::feed, parser_t::perrow);
     CHECK(p.ok());
     CHECK(p.result.size() == 1);
     CHECK(p.result[0] == vector<string>{"a", "b", "c"});
+  }
+
+  SUBCASE("unterminated quote") {
+    parser_t p;
+    p.set_delim('|');
+    p.set_escape('\\');
+    p.set_input("a|b|c\n"
+                "\"abcdefg");
+    p.parse(parser_t::feed, parser_t::perrow);
+    CHECK(!p.ok());
   }
 };
