@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
   conf.qte = QTE;
   conf.esc = ESC;
   conf.delim = DELIM;
-  csv_t csv = csv_open(conf);
+  csv_t csv = csv_open(&conf);
   if (!csv.ok) {
     fprintf(stderr, "ERROR: %s\n", csv.errmsg);
     exit(1);

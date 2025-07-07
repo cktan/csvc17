@@ -14,7 +14,7 @@ const char *PATH = "/tmp/csv_filescan_test.cv";
 struct context_t {
   csv_t csv;
   std::vector<std::vector<std::string>> result;
-  context_t() { csv = csv_open(csv_default_config()); }
+  context_t() { csv = csv_open(0); }
   ~context_t() { csv_close(&csv); }
   context_t(context_t &) = delete;
   context_t &operator=(context_t &) = delete;

@@ -19,7 +19,7 @@ struct context_t {
     conf.qte = QTE;
     conf.esc = ESC;
     conf.delim = DELIM;
-    csv = csv_open(conf);
+    csv = csv_open(&conf);
   }
   ~context_t() { csv_close(&csv); }
   context_t(context_t &) = delete;

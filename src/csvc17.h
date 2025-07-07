@@ -82,13 +82,14 @@ typedef int csv_perrow_t(void *context, int n, csv_value_t value[],
 
 /**
  *  Open a scan. The csv_t handle returned must be freed using
- *  csv_close() after use.
+ *  csv_close() after use. The param 'conf' may be NULL to use the
+ *  default configuration.
  *
  *  Note: this is a 3-part open(), parse(), close() interface to cater to C++
  *  exceptions (or longjmp) being thrown inside the callback routines during
  *  parse() operation.
  */
-CSV_EXTERN csv_t csv_open(csv_config_t config);
+CSV_EXTERN csv_t csv_open(const csv_config_t* conf);
 
 /**
  *  Run the scan and invoke callbacks on demand. Return 0 on success, -1

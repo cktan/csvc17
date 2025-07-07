@@ -430,7 +430,7 @@ bail:
   return -1;
 }
 
-csv_t csv_open(csv_config_t conf) {
+csv_t csv_open(const csv_config_t* conf) {
   csv_t ret;
   memset(&ret, 0, sizeof(ret));
   csvx_t *cb = (csvx_t *)calloc(1, sizeof(*cb));
@@ -440,7 +440,7 @@ csv_t csv_open(csv_config_t conf) {
   }
   ret.__internal = cb;
 
-  cb->conf = conf;
+  cb->conf = conf ? *conf : csv_default_config();
   ret.ok = true;
   return ret;
 }
