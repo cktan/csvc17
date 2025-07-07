@@ -10,8 +10,8 @@
 typedef struct scan_t scan_t;
 struct scan_t {
   // for alignment
+  char inuse[4]; // flag which of ch[x] are in use
   __m256i ch[4];
-  char inuse[4];   // flag which of ch[x] are in use
   char tmpbuf[32]; // copy when (q-base) < 32b
 
   // orig <= base <= p <= q.
@@ -30,7 +30,7 @@ static int __scan_calcflag(scan_t *scan) {
     if (len <= 0) {
       return -1;
     }
-    memset(scan->tmpbuf, 0, sizeof(scan->tmpbuf));
+    // memset(scan->tmpbuf, 0, sizeof(scan->tmpbuf));
     memcpy(scan->tmpbuf, base, len);
     base = scan->tmpbuf;
   }

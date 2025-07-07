@@ -226,24 +226,22 @@ static int onerow(scan_t *scan, csvx_t *cb) {
   const char qte = cb->conf.qte;
   const char delim = cb->conf.delim;
 
-  // p points to start of value; pp points to the current special char
-  const char *p = 0;
-  const char *pp = 0;
-  char ch; // char at *pp
+  const char *pp = 0; // current
+  char ch;            // char at *pp
 
   cb->value.top = 0;
   cb->status.rowno++;
   cb->status.lineno++;
 
 STARTVAL:
-  p = scan->p;
-  if (p >= scan->q) {
+  pp = scan->p;
+  if (pp >= scan->q) {
     return 0;
   }
 
   csv_value_t value;
   memset(&value, 0, sizeof(value));
-  value.ptr = (char *)p;
+  value.ptr = (char *)pp;
   goto UNQUOTED;
 
 UNQUOTED:
@@ -252,11 +250,7 @@ UNQUOTED:
   // ch in [0, \n, delim, qte, or esc]
   if (ch == 0) {
     // out of data...
-    assert(ch == 0);
-    if (cb->eof) {
-      return RETERROR(cb, "%s", "unterminated row");
-    }
-    return 0;
+    return cb->eof ? RETERROR(cb, "%s", "unterminated row") : 0;
   }
 
   if (ch == qte)
@@ -278,11 +272,7 @@ QUOTED:
   // ch in [0, \n, delim, qte, or esc]
   if (ch == 0) {
     // out of data...
-    assert(ch == 0);
-    if (cb->eof) {
-      return RETERROR(cb, "%s", "unterminated quote");
-    }
-    return 0;
+    return cb->eof ? RETERROR(cb, "%s", "unterminated quote") : 0;
   }
   if (ch == '\n') {
     cb->status.lineno++;
@@ -320,7 +310,7 @@ ENDVAL:
 
 ENDROW:
   // handle \r\n
-  value.len = pp - p;
+  value.len = pp - value.ptr;
   if (value.len && value.ptr[value.len - 1] == '\r') {
     value.len--;
   }
