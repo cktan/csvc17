@@ -23,6 +23,8 @@ struct scan_t {
   uint32_t flag; // bmap marks interesting bits offset from base
 };
 
+// Set the flag field, which is bitmap that indicate which char
+// indexed from base is interesting.
 static int __scan_calcflag(scan_t *scan) {
   const char *base = scan->base;
   int64_t len = scan->q - base;
@@ -52,6 +54,8 @@ static int __scan_calcflag(scan_t *scan) {
   return 0;
 }
 
+// Initialize a scan. The interesting chars are provided in the string
+// 'accept'. This is similar to strpbrk().
 static scan_t scan_init(const char *accept) {
   scan_t scan;
   memset(&scan, 0, sizeof(scan));
@@ -64,7 +68,8 @@ static scan_t scan_init(const char *accept) {
   return scan;
 }
 
-static void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
+// Get ready to scan buf[].
+static inline void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
   scan->orig = buf;
   scan->base = buf;
   scan->p = buf;
@@ -72,6 +77,7 @@ static void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
   __scan_calcflag(scan);
 }
 
+// Move to the next SIMD pipeline
 static void __scan_forward(scan_t *scan) {
   while (!scan->flag) {
     scan->base += 32;
@@ -80,6 +86,7 @@ static void __scan_forward(scan_t *scan) {
   }
 }
 
+// Return a pointer to the next interesting char, or NULL if not found.
 static inline const char *scan_next(scan_t *scan) {
   if (!scan->flag) {
     __scan_forward(scan);
@@ -96,4 +103,5 @@ static inline const char *scan_next(scan_t *scan) {
   return (scan->p < scan->q) ? scan->p++ : 0;
 }
 
+// Return TRUE if the current char matches ch.
 static inline int scan_match(scan_t *scan, int ch) { return ch == *scan->p; }
