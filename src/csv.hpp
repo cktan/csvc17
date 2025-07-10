@@ -1,6 +1,9 @@
 #pragma once
 
 #include "csvc17.h"
+#include <string>
+#include <string_view>
+#include <cstring>
 
 /**
  * Note: in this implementation of csv_parer_t, the context to the callback functions is always

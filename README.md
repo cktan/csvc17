@@ -15,6 +15,7 @@ for details.
 
 ``` c
 #include <stdio.h>
+#include <stdlib.h>
 #include "csvc17.h"
 
 /*
@@ -22,37 +23,40 @@ for details.
  */
 typedef struct context_t context_t;
 struct context_t {
-	int count;
+  int count;
 };
 
-static int perrow(void* ctx, int n, csv_value_t value[], 
-                  int64_t lineno, int64_t rowno, 
-				  char* errbuf, int errsz) {
-	context_t* context = ctx;
-	context->count++;
-	for (int i = 0; i < n; i++) {
-	    printf("%s%s", (i ? ", " : ""), value[i].ptr);
-    }
-	printf("\n");
-	return 0;
+static void ERROR(const char *msg) {
+  fprintf(stderr, "ERROR: %s\n", msg);
+  exit(1);
 }
 
+static int perrow(void *ctx, int n, csv_value_t value[], int64_t lineno,
+                  int64_t rowno, char *errbuf, int errsz) {
+  context_t *context = ctx;
+  context->count++;
+  for (int i = 0; i < n; i++) {
+    printf("%d | %s\n", i + 1, value[i].ptr);
+  }
+  printf("--\n");
+  return 0;
+}
 
 int main() {
-	context_t context = {0};
-    csv_config_t conf = csv_default_config();
-    conf.delim = '|';
-    csv_t csv = csv_open(&conf);
-    if (!csv.ok) {
-        ERROR(csv.errmsg);
-    }
-    if (csv_parse_file_ex(&csv, 'file.csv', context, perrow)) {
-       ERROR(csv.errmsg);
-    }
-    csv_close(&csv);
-	print("%d row(s)\n", context.count);
-	return 0;
-}	
+  context_t context = {0};
+  csv_config_t conf = csv_default_config();
+  conf.delim = '|';
+  csv_t csv = csv_open(&conf);
+  if (!csv.ok) {
+    ERROR(csv.errmsg);
+  }
+  if (csv_parse_file_ex(&csv, "file.csv", &context, perrow)) {
+    ERROR(csv.errmsg);
+  }
+  csv_close(&csv);
+  printf("%d row(s)\n", context.count);
+  return 0;
+}
 ```
 
 ## Usage in C++
@@ -62,36 +66,39 @@ See
 for details.
 
 ``` c++
-#include <stdio.h>
 #include "csv.hpp"
+#include <cstdio>
 
 struct parser_t : csv_parser_t {
-	int count;
+  int count = 0;
+};
+
+static void
+ERROR(const char *msg) {
+  fprintf(stderr, "ERROR: %s\n", msg);
+  exit(1);
 }
 
-static int perrow(void* ctx, int n, csv_value_t value[], 
-                  int64_t lineno, int64_t rowno, 
-				  char* errbuf, int errsz) {
-	parser_t* p = (parser_t*) ctx;
-	p->count++;
-	for (int i = 0; i < n; i++) {
-	    printf("%s%s", (i ? ", " : ""), value[i].ptr);
-    }
-	printf("\n");
-	return 0;
+static int perrow(void *ctx, int n, csv_value_t value[], int64_t lineno,
+                  int64_t rowno, char *errbuf, int errsz) {
+  parser_t *p = (parser_t *)ctx;
+  p->count++;
+  for (int i = 0; i < n; i++) {
+    printf("%d | %s\n", i + 1, value[i].ptr);
+  }
+  printf("--\n");
+  return 0;
 }
-
 
 int main() {
-	parser_t p;
-	p.set_delim('|');
-	if (!p.parse_file('file.csv', perrow)) {
-	    ERROR(p.errmsg());
-	}	
-	print("%d row(s)\n", p.count);
-	return 0;
-}	
-
+  parser_t p;
+  p.set_delim('|');
+  if (!p.parse_file("file.csv", perrow)) {
+    ERROR(p.errmsg());
+  }
+  printf("%d row(s)\n", p.count);
+  return 0;
+}
 ```
 
 ## Building
