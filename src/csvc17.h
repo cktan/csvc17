@@ -38,10 +38,11 @@
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
   bool unquote_values; /* default true; */
+  bool skip_header;    /* default false; */
   char nullstr[16];    /* what is NULL? default '' */
-  int qte;             /* default double-quote */
-  int esc;             /* default double-quote */
-  int delim;           /* default comma */
+  char qte;            /* default double-quote */
+  char esc;            /* default double-quote */
+  char delim;          /* default comma */
   int initbufsz;       /* default 4KB */
   int maxbufsz;        /* default 1GB */
 };

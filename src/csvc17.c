@@ -354,6 +354,7 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
     accept[i++] = 0;
   }
   scan_t scan_unquote = scan_init(accept);
+  bool skip_header = (cb->conf.skip_header && cb->status.rowno == 0);
 
   // keep scanning until EOF
   while (!finished(cb)) {
@@ -392,6 +393,11 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
       assert(N == 1);
       cb->buf.bot += scan_row.p - saved_p;
 
+      if (skip_header) {
+        skip_header = false;
+        continue;
+      }
+
       // Unquote the values.
       if (cb->conf.unquote_values) {
         for (int i = 0; i < cb->value.top; i++) {
@@ -401,7 +407,8 @@ int csv_parse(csv_t *csv, void *context, csv_feed_t *feed,
 
       // Invoke the callback to process the current row
       if (perrow(context, cb->value.top, cb->value.ptr, cb->status.lineno,
-                 cb->status.rowno, cb->ebuf.ptr, cb->ebuf.len)) {
+                 cb->status.rowno - (cb->conf.skip_header ? 1 : 0),
+                 cb->ebuf.ptr, cb->ebuf.len)) {
         // Make up an error message if user did not supply one
         if (!cb->ebuf.ptr[0]) {
           RETERROR(cb, "%s", "perrow callback failed");
@@ -596,6 +603,7 @@ csv_config_t csv_default_config(void) {
   csv_config_t conf;
   memset(&conf, 0, sizeof(conf));
   conf.unquote_values = true;
+  conf.skip_header = false;
   conf.qte = '"';
   conf.esc = '"';
   conf.delim = ',';

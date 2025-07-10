@@ -11,11 +11,12 @@ struct context_t {
   csv_t csv;
   const char *doc;
   std::vector<std::vector<std::string>> result;
-  context_t(const char *doc_) : doc(doc_) {
+  context_t(const char *doc_, bool skip_header = false) : doc(doc_) {
     auto conf = csv_default_config();
     conf.qte = QTE;
     conf.esc = ESC;
     conf.delim = DELIM;
+    conf.skip_header = skip_header;
     csv = csv_open(&conf);
   }
   ~context_t() { csv_close(&csv); }
@@ -96,5 +97,26 @@ TEST_CASE("csv1") {
     CHECK(row2[0] == "jkl");
     CHECK(row2[1] == "mno");
     CHECK(row2[2] == "pqr");
+  }
+
+  SUBCASE("skip header") {
+    context_t ctx{"abc|def|ghi\r\njkl|mno|pqr", true};
+    CHECK(ctx.csv.ok);
+    csv_parse(&ctx.csv, (void *)&ctx, feed, perrow);
+    CHECK(ctx.csv.ok);
+    CHECK(ctx.result.size() == 1);
+    auto row1 = ctx.result[0];
+    CHECK(row1.size() == 3);
+    CHECK(row1[0] == "jkl");
+    CHECK(row1[1] == "mno");
+    CHECK(row1[2] == "pqr");
+  }
+
+  SUBCASE("skip header, no data") {
+    context_t ctx{"abc|def|ghi\r\n", true};
+    CHECK(ctx.csv.ok);
+    csv_parse(&ctx.csv, (void *)&ctx, feed, perrow);
+    CHECK(ctx.csv.ok);
+    CHECK(ctx.result.size() == 0);
   }
 }
