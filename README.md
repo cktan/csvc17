@@ -7,10 +7,16 @@ This library provides efficient parsing of CSV documents. Key features include:
 - **High-Performance Parsing**: Leverages SIMD instructions to rapidly scan for special characters (e.g., delimiters, quotes), significantly improving parsing speed.
 - **C++ RAII Support**: Includes a C++ interface designed with Resource Acquisition Is Initialization (RAII) principles for safe resource management.
 
-### Usage
+## Usage in C
 
+See
+[csvc17.h](https://github.com/cktan/csvc17/blob/main/src/csvc17.h)
+for details.
 
 ``` c
+#include <stdio.h>
+#include "csvc17.h"
+
 /*
  *  Print the content of a csv file.
  */
@@ -49,8 +55,16 @@ int main() {
 }	
 ```
 
+## Usage in C++
+
+See
+[csv.hpp](https://github.com/cktan/csvc17/blob/main/src/csv.hpp)
+for details.
 
 ``` c++
+#include <stdio.h>
+#include "csv.hpp"
+
 struct parser_t : csv_parser_t {
 	int count;
 }
