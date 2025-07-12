@@ -14,13 +14,13 @@ See
 for details.
 
 ``` c
+/*
+ *  Print the content of a csv file that uses | as delim.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include "csvc17.h"
 
-/*
- *  Print the content of a csv file.
- */
 typedef struct context_t context_t;
 struct context_t {
   int count;
@@ -66,6 +66,9 @@ See
 for details.
 
 ``` c++
+/*
+ *  Print the content of a csv file that uses | as delim.
+ */
 #include "csv.hpp"
 #include <cstdio>
 
