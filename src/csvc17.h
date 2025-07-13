@@ -37,14 +37,16 @@
 
 typedef struct csv_config_t csv_config_t;
 struct csv_config_t {
-  bool unquote_values; /* default true; */
-  bool skip_header;    /* default false; */
-  char nullstr[16];    /* what is NULL? default '' */
-  char qte;            /* default double-quote */
-  char esc;            /* default double-quote */
-  char delim;          /* default comma */
-  int initbufsz;       /* default 4KB */
-  int maxbufsz;        /* default 1GB */
+  bool unquote_values; // unquote and unescape the values for perrow callback;
+                       // default true
+  bool skip_header;    // skip the first row; default false
+  char nullstr[16];    // what is NULL? default ''
+  char qte;            // default double-quote
+  char esc;            // default double-quote
+  char delim;          // default comma
+  int initbufsz;       // default 4KB
+  int maxbufsz;        // this should be many times bigger than the longest row;
+                       // default 1GB
 };
 
 typedef struct csv_t csv_t;
@@ -59,9 +61,9 @@ struct csv_t {
  */
 typedef struct csv_value_t csv_value_t;
 struct csv_value_t {
-  char *ptr; // for NULL, ptr will be nullptr.
-  int len;
-  bool quoted;
+  char *ptr;   // for NULL, ptr will be a nullptr.
+  int len;     // length of the string, excluding the terminal NUL.
+  bool quoted; // true if value is quoted
 };
 
 /**
