@@ -6,7 +6,7 @@
 #include <cstring>
 
 /**
- * Note: in this implementation of csv_parer_t, the context to the callback functions is always
+ * Note: in this implementation of csv_parser_t, the context to the callback functions is always
  * a pointer to the csv_parser_t itself. User can create a subclass of csv_parser_t and put
  * relevant context variables in the subclass for feed and perrow callback functions.
  *
@@ -24,10 +24,7 @@
 class csv_parser_t {
 private:
   void reset() {
-    if (m_csv.__internal) {
-      csv_close(&m_csv);
-      m_csv = {};
-    }
+    csv_close(&m_csv);
     m_csv = csv_open(&m_conf);
   }
 public:
@@ -43,6 +40,10 @@ public:
   const char* errmsg() const { return m_csv.errmsg; }
 
   // set parameters
+  csv_parser_t& set_skip_header(bool flag) {
+    m_conf.skip_header = flag;
+    return *this;
+  }
   csv_parser_t& set_delim(char delim) {
     m_conf.delim = delim;
     return *this;

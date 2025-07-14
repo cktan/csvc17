@@ -443,22 +443,20 @@ csv_t csv_open(const csv_config_t *conf) {
 }
 
 void csv_close(csv_t *csv) {
-  if (csv) {
-    if (csv->__internal) {
-      csvx_t *cb = (csvx_t *)csv->__internal;
-      free(cb->buf.ptr);
-      free(cb->value.ptr);
-      if (cb->fp) {
-        fclose(cb->fp);
-      }
-      free(csv->__internal);
-      csv->__internal = NULL;
+  if (csv && csv->__internal) {
+    csvx_t *cb = (csvx_t *)csv->__internal;
+    free(cb->buf.ptr);
+    free(cb->value.ptr);
+    if (cb->fp) {
+      fclose(cb->fp);
     }
+    free(csv->__internal);
+    csv->__internal = NULL;
   }
 }
 
 int csv_parse_file(csv_t *csv, FILE *fp, void *context, csv_perrow_t *perrow) {
-  /* Note: we own fp now. Make sure it closed here or
+  /* Note: we own fp now. Make sure it is closed here or
    * in csv_close(). */
   if (!csv->ok) {
     assert(csv->errmsg[0]);
