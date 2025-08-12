@@ -4,7 +4,7 @@ This library provides efficient parsing of CSV documents. Key features include:
 
 - **Stream Processing**: Content is read via a user-defined `feed` callback function.
 - **Row Notification**: The library invokes a `perrow` callback function upon successfully parsing each row.
-- **High-Performance Parsing**: Leverages SIMD instructions to rapidly scan for special characters (e.g., delimiters, quotes), significantly improving parsing speed.
+- **High-Performance Parsing**: Leverages SIMD instructions to rapidly scan for special characters (e.g., delimiters, quotes), significantly improving parsing speed. Works with AVX2 and NEON instruction sets.
 - **C++ RAII Support**: Includes a C++ interface designed with Resource Acquisition Is Initialization (RAII) principles for safe resource management.
 
 ## Usage in C
