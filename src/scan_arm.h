@@ -58,7 +58,8 @@ static int __scan_calcflag(scan_t *scan) {
 }
 
 // Initialize a scan. The interesting chars are provided in the string
-// 'accept'. This is similar to strpbrk().
+// 'accept', which must not be longer than 4 chars. This is similar to
+// strpbrk().
 static scan_t scan_init(const char *accept) {
   scan_t scan;
   memset(&scan, 0, sizeof(scan));
@@ -83,7 +84,8 @@ static inline void scan_reset(scan_t *scan, const char *buf, int64_t buflen) {
 // Move to the next SIMD pipeline
 static void __scan_forward(scan_t *scan) {
   while (!scan->flag) {
-    scan->base += 16;
+    scan->base += 16; // 16 at a time
+    // use new base to find the new scan->flag
     if (__scan_calcflag(scan))
       break;
   }
@@ -98,7 +100,7 @@ static inline const char *scan_next(scan_t *scan) {
   // x, or if x is zero, returns zero.
   int off = __builtin_ffs(scan->flag) - 1;
   if (off >= 0) {
-    scan->flag &= ~(1 << off);
+    scan->flag &= ~(1 << off); // clear the bit at off
     scan->p = scan->base + off;
   } else {
     scan->p = scan->q;
