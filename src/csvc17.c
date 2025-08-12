@@ -2,7 +2,11 @@
  * https://github.com/cktan/csvc17/blob/main/LICENSE
  */
 #include "csvc17.h"
-#include "scan.h"
+#ifdef __x86_64__
+#include "scan_x86.h"
+#elif defined(__aarch64__)
+#include "scan_arm.h"
+#endif
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>

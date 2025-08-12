@@ -14,7 +14,7 @@ ifeq ($(ARCH), x86_64)
     # Safe for AVX2 cpu (will auto-use avx512bw where available)
     CFLAGS += -mavx2 -mno-avx512f
 else ifeq ($(ARCH),aarch64)
-    $(error Fill this in later)
+    CFLAGS += -march=armv8-a
 else
     $(error Unsupported CPU $(ARCH))
 endif

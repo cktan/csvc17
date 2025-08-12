@@ -10,9 +10,9 @@
 typedef struct scan_t scan_t;
 struct scan_t {
   // for alignment
-  char inuse[4]; // flag which of ch[x] are in use
-  __m256i ch[4];
-  char tmpbuf[32]; // copy when (q-base) < 32b
+  char inuse[4];   // flag which of ch[x] are in use
+  __m256i ch[4];   // up to 4 interesting char or 0
+  char tmpbuf[32]; // copy when (q-base) < 32 bytes
 
   // orig <= base <= p <= q.
   const char *orig; // scan started here
@@ -38,7 +38,7 @@ static int __scan_calcflag(scan_t *scan) {
   }
 #ifdef ALIGNED_LOAD
   // don't need this on x86
-  else if (((intptr_t)base) & 0xf) {
+  else if (((intptr_t)base) & 0x1f) {
     memcpy(scan->tmpbuf, base, 32);
     base = scan->tmpbuf;
   }
